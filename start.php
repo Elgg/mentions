@@ -91,7 +91,19 @@ function mentions_entity_notification_handler($event, $object_type, $object) {
 		if (preg_match_all($CONFIG->mentions_match_regexp, $content, $matches)) {
 			// match against the 2nd index since the first is everything
 			foreach ($matches[1] as $username) {
-				if (($user = get_user_by_username($username)) && !in_array($user->getGUID(), $notified_guids)) {
+
+				if ($object_type == 'annotation') {
+					if ($parent = get_entity($object->entity_guid)) {
+						$access = has_access_to_entity($parent, $user);
+					} else {
+						continue;
+					}
+				} else {
+					$access = has_access_to_entity($object, $user);
+				}
+
+				if (($user = get_user_by_username($username)) && !in_array($user->getGUID(), $notified_guids)
+				&& $access) {
 					// if they haven't set the notification status default to sending.
 					$notification_setting = get_plugin_usersetting('notify', $user->getGUID(), 'mentions');
 
@@ -104,7 +116,7 @@ function mentions_entity_notification_handler($event, $object_type, $object) {
 					switch($object_type) {
 						case 'annotation':
 							if ($parent = get_entity($object->entity_guid)) {
-								$link = $parent->getURL();
+								$link = $object->getURL();
 							} else {
 								$link = 'Unavailable';
 							}
@@ -124,7 +136,7 @@ function mentions_entity_notification_handler($event, $object_type, $object) {
 					$subject = sprintf(elgg_echo('mentions:notification:subject'), $owner->name, $type_str);
 
 					// use the search function to pull out relevant parts of the content
-					$content = search_get_highlighted_relevant_substrings($content, "@{$user->username}");
+					//$content = search_get_highlighted_relevant_substrings($content, "@{$user->username}");
 
 					$body = sprintf(elgg_echo('mentions:notification:body'), $owner->name, $type_str, $content, $link);
 
