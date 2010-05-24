@@ -85,7 +85,6 @@ function mentions_entity_notification_handler($event, $type, $object) {
 	global $CONFIG;
 
 	if ($type == 'annotation' && $object->name != 'generic_comment') {
-		var_dump("SDF");
 		return NULL;
 	}
 
