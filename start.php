@@ -29,8 +29,13 @@ function mentions_init() {
 
 
 	// can't use notification hooks here because of many reasons
-	// registering all/create to do the scanning
-	register_elgg_event_handler('create', 'all', 'mentions_entity_notification_handler');
+	// only check against annotations:generic_comment and entity:object
+	register_elgg_event_handler('create', 'object', 'mentions_entity_notification_handler');
+	register_elgg_event_handler('create', 'annotation', 'mentions_entity_notification_handler');
+
+	// @todo This will result in multiple notifications for an edited entity
+	// could put "guids notified" metadata on the entity to avoid this.
+	//register_elgg_event_handler('update', 'all', 'mentions_entity_notification_handler');
 
 	register_elgg_event_handler('annotate', 'all', 'mentions_annotation_notification_handler');
 }
@@ -72,14 +77,20 @@ function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
  * Catch all create events and scan for @username tags to notify user.
  *
  * @param unknown_type $event
- * @param unknown_type $object_type
+ * @param unknown_type $type
  * @param unknown_type $object
  * @return unknown_type
  */
-function mentions_entity_notification_handler($event, $object_type, $object) {
+function mentions_entity_notification_handler($event, $type, $object) {
 	global $CONFIG;
+
+	if ($type == 'annotation' && $object->name != 'generic_comment') {
+		var_dump("SDF");
+		return NULL;
+	}
+
 	$fields = array(
-		'title', 'description', 'value'
+		'name', 'title', 'description', 'value'
 	);
 
 	// store the guids of notified users so they only get one notification per creation event
@@ -92,7 +103,7 @@ function mentions_entity_notification_handler($event, $object_type, $object) {
 			// match against the 2nd index since the first is everything
 			foreach ($matches[1] as $username) {
 
-				if ($object_type == 'annotation') {
+				if ($type == 'annotation') {
 					if ($parent = get_entity($object->entity_guid)) {
 						$access = has_access_to_entity($parent, $user);
 					} else {
@@ -113,10 +124,11 @@ function mentions_entity_notification_handler($event, $object_type, $object) {
 					}
 
 					// figure out the link
-					switch($object_type) {
+					switch($type) {
 						case 'annotation':
+							//@todo permalinks for comments?
 							if ($parent = get_entity($object->entity_guid)) {
-								$link = $object->getURL();
+								$link = $parent->getURL();
 							} else {
 								$link = 'Unavailable';
 							}
@@ -127,7 +139,7 @@ function mentions_entity_notification_handler($event, $object_type, $object) {
 					}
 
 					$owner = get_entity($object->owner_guid);
-					$type_key = "mentions:notification_types:$object_type";
+					$type_key = "mentions:notification_types:$type";
 					if ($subtype = $object->getSubtype()) {
 						$type_key .= ":$subtype";
 					}
