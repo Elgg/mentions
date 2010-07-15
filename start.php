@@ -15,19 +15,6 @@ function mentions_init() {
 	// Register our post processing hook
 	register_plugin_hook('display', 'view', 'mentions_rewrite');
 
-	// a list of language key / view path arrays to accept for rewriting
-	// @todo define a list of views to scan so we don't scan them all.
-//	$CONFIG->mentions_available_objects = array(
-//		'blog' => array(),
-//		'group' => array(),
-//		'group_discussion' => array(),
-//		'thewire' => array(),
-//		'pages' => array(),
-//		'files' => array(),
-//		'bookmarks' => array()
-//	);
-
-
 	// can't use notification hooks here because of many reasons
 	// only check against annotations:generic_comment and entity:object
 	register_elgg_event_handler('create', 'object', 'mentions_entity_notification_handler');
@@ -102,6 +89,10 @@ function mentions_entity_notification_handler($event, $type, $object) {
 			// match against the 2nd index since the first is everything
 			foreach ($matches[1] as $username) {
 
+				if (!$user = get_user_by_username($username)) {
+					continue;
+				}
+				
 				if ($type == 'annotation') {
 					if ($parent = get_entity($object->entity_guid)) {
 						$access = has_access_to_entity($parent, $user);
@@ -112,8 +103,7 @@ function mentions_entity_notification_handler($event, $type, $object) {
 					$access = has_access_to_entity($object, $user);
 				}
 
-				if (($user = get_user_by_username($username)) && !in_array($user->getGUID(), $notified_guids)
-				&& $access) {
+				if ($user && $access && !in_array($user->getGUID(), $notified_guids)) {
 					// if they haven't set the notification status default to sending.
 					$notification_setting = get_plugin_usersetting('notify', $user->getGUID(), 'mentions');
 
