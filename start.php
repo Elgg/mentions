@@ -10,7 +10,8 @@
 function mentions_init() {
 	global $CONFIG;
 
-	$CONFIG->mentions_match_regexp = '/[\b]?@([^\/\\"\'\*&\?#&\^\(\){}\[\]~<>;|@\-\+= \.,]+)[\b]?/i';
+	// get all chars with unicode 'letter' properties or _ and ., preceeded by @, and possibly surrounded by word boundaries.
+	$CONFIG->mentions_match_regexp = '[\b]?@([\p{L}_\.]+)[\b]?';
 
 	// Register our post processing hook
 	register_plugin_hook('display', 'view', 'mentions_rewrite');
@@ -92,7 +93,7 @@ function mentions_entity_notification_handler($event, $type, $object) {
 				if (!$user = get_user_by_username($username)) {
 					continue;
 				}
-				
+
 				if ($type == 'annotation') {
 					if ($parent = get_entity($object->entity_guid)) {
 						$access = has_access_to_entity($parent, $user);
