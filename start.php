@@ -10,11 +10,13 @@
 function mentions_init() {
 	global $CONFIG;
 
-	// get all chars with unicode 'letter' properties or _ and ., preceeded by @, and possibly surrounded by word boundaries.
-	$CONFIG->mentions_match_regexp = '[\b]?@([\p{L}_\.]+)[\b]?';
+	// @todo this won't work for usernames that must be html encoded.
+	// get all chars with unicode 'letter' or 'mark' properties or a number _ or .,
+	// preceeded by @, and possibly surrounded by word boundaries.
+	$CONFIG->mentions_match_regexp = '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
 
 	// Register our post processing hook
-	register_plugin_hook('display', 'view', 'mentions_rewrite');
+	register_plugin_hook('output', 'page', 'mentions_rewrite');
 
 	// can't use notification hooks here because of many reasons
 	// only check against annotations:generic_comment and entity:object
@@ -40,25 +42,20 @@ function mentions_init() {
 function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
 	global $CONFIG;
 
-	$view = $params['view'];
+	$returnvalue =  preg_replace_callback($CONFIG->mentions_match_regexp,
+		create_function(
+			'$matches',
+			'
+				global $CONFIG;
+				if ($user = get_user_by_username($matches[1])) {
+					return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
+				} else {
+					return $matches[0];
+				}
+			'
+	), $returnvalue);
 
-	//return $returnvalue;
-	if ($view) {
-		$returnvalue =  preg_replace_callback($CONFIG->mentions_match_regexp,
-			create_function(
-				'$matches',
-				'
-					global $CONFIG;
-					if ($user = get_user_by_username($matches[1])) {
-						return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
-					} else {
-						return $matches[0];
-					}
-				'
-		), $returnvalue);
-
-		return $returnvalue;
-	}
+	return $returnvalue;
 }
 
 /**
