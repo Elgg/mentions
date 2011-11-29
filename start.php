@@ -73,6 +73,11 @@ function mentions_entity_notification_handler($event, $type, $object) {
 		return NULL;
 	}
 
+	// excludes messages - otherwise an endless loop of notifications occur!
+	if ($object->getSubtype() == "messages") {
+		return NULL;
+	}
+
 	$fields = array(
 		'name', 'title', 'description', 'value'
 	);
