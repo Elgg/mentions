@@ -8,7 +8,7 @@
  * @link http://elgg.com/
  */
 
-$user = get_loggedin_user();
+$user = elgg_get_logged_in_user_entity();
 
 if (FALSE === get_plugin_usersetting('notify', $user->getGUID(), 'mentions')) {
 	set_plugin_usersetting('notify', TRUE, $user->getGUID(), 'mentions');

@@ -16,18 +16,18 @@ function mentions_init() {
 	$CONFIG->mentions_match_regexp = '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
 
 	// Register our post processing hook
-	register_plugin_hook('output', 'page', 'mentions_rewrite');
+	elgg_register_plugin_hook_handler('output', 'page', 'mentions_rewrite');
 
 	// can't use notification hooks here because of many reasons
 	// only check against annotations:generic_comment and entity:object
-	register_elgg_event_handler('create', 'object', 'mentions_entity_notification_handler');
-	register_elgg_event_handler('create', 'annotation', 'mentions_entity_notification_handler');
+	elgg_register_event_handler('create', 'object', 'mentions_entity_notification_handler');
+	elgg_register_event_handler('create', 'annotation', 'mentions_entity_notification_handler');
 
 	// @todo This will result in multiple notifications for an edited entity
 	// could put "guids notified" metadata on the entity to avoid this.
 	//register_elgg_event_handler('update', 'all', 'mentions_entity_notification_handler');
 
-	register_elgg_event_handler('annotate', 'all', 'mentions_annotation_notification_handler');
+	elgg_register_event_handler('annotate', 'all', 'mentions_annotation_notification_handler');
 }
 
 /**
@@ -153,4 +153,4 @@ function mentions_entity_notification_handler($event, $type, $object) {
 	}
 }
 
-register_elgg_event_handler('init', 'system', 'mentions_init');
+elgg_register_event_handler('init', 'system', 'mentions_init');
