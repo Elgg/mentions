@@ -108,7 +108,7 @@ function mentions_entity_notification_handler($event, $type, $object) {
 
 				if ($user && $access && !in_array($user->getGUID(), $notified_guids)) {
 					// if they haven't set the notification status default to sending.
-					$notification_setting = get_plugin_usersetting('notify', $user->getGUID(), 'mentions');
+					$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
 
 					if (!$notification_setting && $notification_setting !== FALSE) {
 						$notified_guids[] = $user->getGUID();
