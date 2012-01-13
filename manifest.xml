@@ -11,7 +11,7 @@
 	<activate_on_install>true</activate_on_install>
 
    	<requires>
-		<type>elgg_version</type>
-		<version>2009030702</version>
+		<type>elgg_release</type>
+		<version>2011123101</version>
 	</requires>
 </plugin_manifest>
