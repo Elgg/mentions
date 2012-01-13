@@ -3,31 +3,31 @@
  * Provides links and notifications for using @username mentions
  *
  * @package Mentions
- * @author Curverider Ltd <info@elgg.com>
- * @copyright Curverider Ltd 2008-2010
  * @link http://elgg.com/
  */
-function mentions_init() {
-	global $CONFIG;
 
+/**
+ * Init
+ */
+function mentions_init() {
 	// @todo this won't work for usernames that must be html encoded.
 	// get all chars with unicode 'letter' or 'mark' properties or a number _ or .,
 	// preceeded by @, and possibly surrounded by word boundaries.
-	$CONFIG->mentions_match_regexp = '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
+	elgg_set_config('mentions_match_regexp', '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu');
 
 	// Register our post processing hook
-	register_plugin_hook('output', 'page', 'mentions_rewrite');
+	elgg_register_plugin_hook_handler('output', 'page', 'mentions_rewrite');
 
 	// can't use notification hooks here because of many reasons
 	// only check against annotations:generic_comment and entity:object
-	register_elgg_event_handler('create', 'object', 'mentions_entity_notification_handler');
-	register_elgg_event_handler('create', 'annotation', 'mentions_entity_notification_handler');
+	elgg_register_event_handler('create', 'object', 'mentions_entity_notification_handler');
+	elgg_register_event_handler('create', 'annotation', 'mentions_entity_notification_handler');
 
 	// @todo This will result in multiple notifications for an edited entity
 	// could put "guids notified" metadata on the entity to avoid this.
 	//register_elgg_event_handler('update', 'all', 'mentions_entity_notification_handler');
 
-	register_elgg_event_handler('annotate', 'all', 'mentions_annotation_notification_handler');
+	elgg_register_event_handler('annotate', 'all', 'mentions_annotation_notification_handler');
 }
 
 /**
@@ -40,22 +40,31 @@ function mentions_init() {
  * @return unknown_type
  */
 function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
-	global $CONFIG;
-
-	$returnvalue =  preg_replace_callback($CONFIG->mentions_match_regexp,
-		create_function(
-			'$matches',
-			'
-				global $CONFIG;
-				if ($user = get_user_by_username($matches[1])) {
-					return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
-				} else {
-					return $matches[0];
-				}
-			'
-	), $returnvalue);
-
+	$regexp = elgg_get_config('mentions_match_regexp');
+	$returnvalue =  preg_replace_callback($regexp, 'mentions_preg_callback', $returnvalue);
+	
 	return $returnvalue;
+}
+
+/**
+ * Used as a callback fro the preg_replace in mentions_rewrite()
+ *
+ * @param type $matches
+ * @return type str
+ */
+function mentions_preg_callback($matches) {
+	$user = get_user_by_username($matches[1]);
+
+	// Catch the trailing period when used as punctuation and not a username.
+	if (!$user && substr($matches[1], -1) == '.') {
+		$user = get_user_by_username(rtrim($matches[1], '.'));
+	}
+
+	if ($user) {
+		return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
+	} else {
+		return $matches[0];
+	}
 }
 
 /**
@@ -67,7 +76,7 @@ function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
  * @return unknown_type
  */
 function mentions_entity_notification_handler($event, $type, $object) {
-	global $CONFIG;
+	$regexp = elgg_get_config('mentions_match_regexp');
 
 	if ($type == 'annotation' && $object->name != 'generic_comment') {
 		return NULL;
@@ -88,16 +97,23 @@ function mentions_entity_notification_handler($event, $type, $object) {
 	foreach ($fields as $field) {
 		$content = $object->$field;
 		// it's ok in in this case if 0 matches == FALSE
-		if (preg_match_all($CONFIG->mentions_match_regexp, $content, $matches)) {
-			// match against the 2nd index since the first is everything
+		if (preg_match_all($regexp, $content, $matches)) {
 			foreach ($matches[1] as $username) {
 
-				if (!$user = get_user_by_username($username)) {
+				$user = get_user_by_username($username);
+
+				// check for trailing punctuation caught by the regex
+				if (!$user && substr($username, -1) == '.') {
+					$user = get_user_by_username(rtrim($username, '.'));
+				}
+
+				if (!$user) {
 					continue;
 				}
 
 				if ($type == 'annotation') {
-					if ($parent = get_entity($object->entity_guid)) {
+					$parent = get_entity($object->entity_guid);
+					if ($parent) {
 						$access = has_access_to_entity($parent, $user);
 					} else {
 						continue;
@@ -108,7 +124,7 @@ function mentions_entity_notification_handler($event, $type, $object) {
 
 				if ($user && $access && !in_array($user->getGUID(), $notified_guids)) {
 					// if they haven't set the notification status default to sending.
-					$notification_setting = get_plugin_usersetting('notify', $user->getGUID(), 'mentions');
+					$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
 
 					if (!$notification_setting && $notification_setting !== FALSE) {
 						$notified_guids[] = $user->getGUID();
@@ -119,7 +135,8 @@ function mentions_entity_notification_handler($event, $type, $object) {
 					switch($type) {
 						case 'annotation':
 							//@todo permalinks for comments?
-							if ($parent = get_entity($object->entity_guid)) {
+							$parent = get_entity($object->entity_guid);
+							if ($parent) {
 								$link = $parent->getURL();
 							} else {
 								$link = 'Unavailable';
@@ -132,19 +149,21 @@ function mentions_entity_notification_handler($event, $type, $object) {
 
 					$owner = get_entity($object->owner_guid);
 					$type_key = "mentions:notification_types:$type";
-					if ($subtype = $object->getSubtype()) {
+					$subtype = $object->getSubtype();
+					if ($subtype) {
 						$type_key .= ":$subtype";
 					}
 
 					$type_str = elgg_echo($type_key);
-					$subject = sprintf(elgg_echo('mentions:notification:subject'), $owner->name, $type_str);
+					$subject = elgg_echo('mentions:notification:subject', array($owner->name, $type_str));
 
 					// use the search function to pull out relevant parts of the content
 					//$content = search_get_highlighted_relevant_substrings($content, "@{$user->username}");
 
-					$body = sprintf(elgg_echo('mentions:notification:body'), $owner->name, $type_str, $content, $link);
+					$body = elgg_echo('mentions:notification:body', array($owner->name, $type_str, $content, $link));
 
-					if (notify_user($user->getGUID(), $CONFIG->site->getGUID(), $subject, $body)) {
+					$site = elgg_get_config('site');
+					if (notify_user($user->getGUID(), $site->getGUID(), $subject, $body)) {
 						$notified_guids[] = $user->getGUID();
 					}
 				}
@@ -153,4 +172,4 @@ function mentions_entity_notification_handler($event, $type, $object) {
 	}
 }
 
-register_elgg_event_handler('init', 'system', 'mentions_init');
+elgg_register_event_handler('init', 'system', 'mentions_init');

@@ -1,4 +1,7 @@
 <?php
+/**
+ * English language translation.
+ */
 
 $english = array(
 	'mentions:send_notification' => 'Send a notification when someone mentions you in a post?',
@@ -18,6 +21,4 @@ To see the full post, click on the link below:
 	'mentions:settings:send_notification' => 'Send a notification when someone mentions you in a post?',
 );
 
-add_translation("en",$english);
-
-?>
+add_translation("en", $english);
