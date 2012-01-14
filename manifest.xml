@@ -12,6 +12,6 @@
 
    	<requires>
 		<type>elgg_release</type>
-		<version>2011123101</version>
+		<version>1.8</version>
 	</requires>
 </plugin_manifest>
