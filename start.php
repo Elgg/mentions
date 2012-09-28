@@ -10,6 +10,8 @@
  * Init
  */
 function mentions_init() {
+	elgg_extend_view('css/elgg', 'css/mentions');
+
 	// @todo this won't work for usernames that must be html encoded.
 	// get all chars with unicode 'letter' or 'mark' properties or a number _ or .,
 	// preceeded by @, and possibly surrounded by word boundaries.
@@ -40,6 +42,7 @@ function mentions_init() {
  * @return unknown_type
  */
 function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
+
 	$regexp = elgg_get_config('mentions_match_regexp');
 	$returnvalue =  preg_replace_callback($regexp, 'mentions_preg_callback', $returnvalue);
 	
@@ -61,7 +64,12 @@ function mentions_preg_callback($matches) {
 	}
 
 	if ($user) {
-		return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
+		if (elgg_get_plugin_setting('fancy_links', 'mentions')) {
+			$icon = "<img class='pas mentions-user-icon' src='" . $user->getIcon('topbar') ."' />";
+			return "<a class='mentions-user-link' href=\"{$user->getURL()}\">$icon{$user->name}</a>";
+		} else {
+			return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
+		}
 	} else {
 		return $matches[0];
 	}

@@ -19,6 +19,9 @@ To see the full post, click on the link below:
 	'mentions:notification_types:annotation:wire_reply' => 'a conversation reply',
 
 	'mentions:settings:send_notification' => 'Send a notification when someone mentions you in a post?',
+
+	// admin
+	'mentions:fancy_links' => 'Replce @mentions with a small picture of the user in addition to the user\'s name',
 );
 
 add_translation("en", $english);
