@@ -12,12 +12,11 @@ To see the full post, click on the link below:
 ',
 	'mentions:notification_types:object:blog' => 'a blog post',
 	'mentions:notification_types:object:conversations' => 'a conversation',
+	'mentions:notification_types:object:groupforumtopic' => 'a group forum post,',
 	'mentions:notification_types:annotation:generic_comment' => 'a comment',
 	'mentions:notification_types:annotation:wire_reply' => 'a conversation reply',
 
 	'mentions:settings:send_notification' => 'Send a notification when someone mentions you in a post?',
 );
 
-add_translation("en",$english);
-
-?>
+add_translation("en", $english);
