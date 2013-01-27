@@ -2,84 +2,78 @@
 /**
  * Provides links and notifications for using @username mentions
  *
- * @package Mentions
- * @author Curverider Ltd <info@elgg.com>
- * @copyright Curverider Ltd 2008-2010
- * @link http://elgg.com/
  */
-function mentions_init() {
-	global $CONFIG;
 
-	// @todo this won't work for usernames that must be html encoded.
-	// get all chars with unicode 'letter' or 'mark' properties or a number _ or .,
-	// preceeded by @, and possibly surrounded by word boundaries.
-	$CONFIG->mentions_match_regexp = '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
+elgg_register_event_handler('init', 'system', 'mentions_init');
+
+function mentions_init() {
 
 	// Register our post processing hook
 	elgg_register_plugin_hook_handler('output', 'page', 'mentions_rewrite');
 
 	// can't use notification hooks here because of many reasons
 	// only check against annotations:generic_comment and entity:object
-	elgg_register_event_handler('create', 'object', 'mentions_entity_notification_handler');
-	elgg_register_event_handler('create', 'annotation', 'mentions_entity_notification_handler');
+	elgg_register_event_handler('create', 'object', 'mentions_notification_handler');
+	elgg_register_event_handler('create', 'annotation', 'mentions_notification_handler');
 
-	// @todo This will result in multiple notifications for an edited entity
-	// could put "guids notified" metadata on the entity to avoid this.
-	//register_elgg_event_handler('update', 'all', 'mentions_entity_notification_handler');
+	// @todo This will result in multiple notifications for an edited entity so we don't do this
+	//register_elgg_event_handler('update', 'all', 'mentions_notification_handler');
+}
 
-	elgg_register_event_handler('annotate', 'all', 'mentions_annotation_notification_handler');
+function mentions_get_regex() {
+	// @todo this won't work for usernames that must be html encoded.
+	// get all chars with unicode 'letter' or 'mark' properties or a number _ or .,
+	// preceeded by @, and possibly surrounded by word boundaries.
+	return '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
 }
 
 /**
- * Rewrites the view content for @username mentions.
+ * Rewrites the page content for @username mentions.
  *
- * @param unknown_type $hook
- * @param unknown_type $entity_type
- * @param unknown_type $returnvalue
- * @param unknown_type $params
- * @return unknown_type
+ * @param string $hook    The name of the hook
+ * @param string $type    The type of the hook
+ * @param string $content The content of the page
+ * @return string
  */
-function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
-	global $CONFIG;
-
-	$returnvalue =  preg_replace_callback($CONFIG->mentions_match_regexp,
+function mentions_rewrite($hook, $type, $content) {
+	return preg_replace_callback(
+		mentions_get_regex(),
 		create_function(
 			'$matches',
 			'
-				global $CONFIG;
 				if ($user = get_user_by_username($matches[1])) {
 					return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
 				} else {
 					return $matches[0];
 				}
 			'
-	), $returnvalue);
-
-	return $returnvalue;
+		),
+		$content
+	);
 }
 
 /**
  * Catch all create events and scan for @username tags to notify user.
  *
- * @param unknown_type $event
- * @param unknown_type $type
- * @param unknown_type $object
- * @return unknown_type
+ * @param string   $event
+ * @param string   $type
+ * @param ElggData $object
+ * @return void
  */
-function mentions_entity_notification_handler($event, $type, $object) {
+function mentions_notification_handler($event, $type, $object) {
 	global $CONFIG;
 
 	if ($type == 'annotation' && $object->name != 'generic_comment') {
-		return NULL;
+		return;
 	}
 
 	// excludes messages - otherwise an endless loop of notifications occur!
-	if ($object->getSubtype() == "messages") {
-		return NULL;
+	if (elgg_instanceof($object, 'object', 'messages')) {
+		return;
 	}
 
 	$fields = array(
-		'name', 'title', 'description', 'value'
+		'title', 'description', 'value'
 	);
 
 	// store the guids of notified users so they only get one notification per creation event
@@ -87,8 +81,8 @@ function mentions_entity_notification_handler($event, $type, $object) {
 
 	foreach ($fields as $field) {
 		$content = $object->$field;
-		// it's ok in in this case if 0 matches == FALSE
-		if (preg_match_all($CONFIG->mentions_match_regexp, $content, $matches)) {
+		// it's ok in this case if 0 matches == FALSE
+		if (preg_match_all(mentions_get_regex(), $content, $matches)) {
 			// match against the 2nd index since the first is everything
 			foreach ($matches[1] as $username) {
 
@@ -152,5 +146,3 @@ function mentions_entity_notification_handler($event, $type, $object) {
 		}
 	}
 }
-
-elgg_register_event_handler('init', 'system', 'mentions_init');

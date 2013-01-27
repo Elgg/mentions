@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plugin_manifest>
-	<field key="author" value="Curverider Ltd" />
-	<field key="version" value="1.0" />
-	<field key="description" value="Rewrite all @username mentions to link to profile and optionally notify user." />
-	<field key="website" value="http://www.elgg.com/" />
-	<field key="copyright" value="(C) Curverider 2008-2010" />
-	<field key="elgg_version" value="2009030702" />
-	<field key="elgg_install_state" value="enabled" />
+<plugin_manifest xmlns="http://www.elgg.org/plugin_manifest/1.8">
+	<name>Mentions</name>
+	<author>Core developers</author>
+	<version>1.0</version>
+	<description>Rewrite all @username mentions to link to profile and optionally notify user.</description>
+	<website>http://www.elgg.org/</website>
+	<repository>https://github.com/Elgg/mentions</repository>
+	<bugtracker>https://github.com/Elgg/mentions/issues</bugtracker>
+	<copyright>Curverider 2008-2010, Elgg Foundation 2012-2013</copyright>
+	<license>GNU General Public License version 2</license>
+	<requires>
+		<type>elgg_release</type>
+		<version>1.8</version>
+	</requires>
 </plugin_manifest>
