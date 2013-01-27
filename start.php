@@ -65,11 +65,6 @@ function mentions_rewrite($hook, $type, $content) {
  */
 function mentions_notification_handler($event, $event_type, $object) {
 
-	// only process comments
-	if ($event_type == 'annotation' && $object->name != 'generic_comment') {
-		return;
-	}
-
 	// excludes messages - otherwise an endless loop of notifications occur!
 	if (elgg_instanceof($object, 'object', 'messages')) {
 		return;
@@ -122,6 +117,11 @@ function mentions_notification_handler($event, $event_type, $object) {
 					$link = $object->getURL();
 					$type_key = "mentions:notification_types:$type:$subtype";
 					$type_str = elgg_echo($type_key);
+					if ($type_str == $type_key) {
+						// plugins can add to the list of mention objects by defining
+						// the language string 'mentions:notification_types:<type>:<subtype>'
+						continue;
+					}
 					$subject = elgg_echo('mentions:notification:subject', array($owner->name, $type_str));
 
 					$body = elgg_echo('mentions:notification:body', array(
