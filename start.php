@@ -30,6 +30,9 @@ function mentions_get_regex() {
 /**
  * Rewrites the page content for @username mentions.
  *
+ * @todo this should only be done in elgg-output divs. Otherwise, we can
+ * introduce links where we don't want them (for example, <head>).
+ *
  * @param string $hook    The name of the hook
  * @param string $type    The type of the hook
  * @param string $content The content of the page
@@ -55,15 +58,15 @@ function mentions_rewrite($hook, $type, $content) {
 /**
  * Catch all create events and scan for @username tags to notify user.
  *
- * @param string   $event
- * @param string   $type
- * @param ElggData $object
+ * @param string   $event      The event name
+ * @param string   $event_type The event type
+ * @param ElggData $object     The object that was created
  * @return void
  */
-function mentions_notification_handler($event, $type, $object) {
-	global $CONFIG;
+function mentions_notification_handler($event, $event_type, $object) {
 
-	if ($type == 'annotation' && $object->name != 'generic_comment') {
+	// only process comments
+	if ($event_type == 'annotation' && $object->name != 'generic_comment') {
 		return;
 	}
 
@@ -71,6 +74,10 @@ function mentions_notification_handler($event, $type, $object) {
 	if (elgg_instanceof($object, 'object', 'messages')) {
 		return;
 	}
+
+	$type = $object->getType();
+	$subtype = $object->getSubtype();
+	$owner = $object->getOwnerEntity();
 
 	$fields = array(
 		'title', 'description', 'value'
@@ -90,57 +97,40 @@ function mentions_notification_handler($event, $type, $object) {
 					continue;
 				}
 
+				// user must have access to view object/annotation
 				if ($type == 'annotation') {
-					if ($parent = get_entity($object->entity_guid)) {
-						$access = has_access_to_entity($parent, $user);
-					} else {
+					$annotated_entity = $object->getEntity();
+					if (!$annotated_entity || !has_access_to_entity($annotated_entity, $user)) {
 						continue;
 					}
 				} else {
-					$access = has_access_to_entity($object, $user);
+					if (!has_access_to_entity($object, $user)) {
+						continue;
+					}
 				}
 
-				if ($user && $access && !in_array($user->getGUID(), $notified_guids)) {
-					// if they haven't set the notification status default to sending.
-					$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
+				if (!in_array($user->getGUID(), $notified_guids)) {
+					$notified_guids[] = $user->getGUID();
 
-					if (!$notification_setting && $notification_setting !== FALSE) {
-						$notified_guids[] = $user->getGUID();
+					// if they haven't set the notification status default to sending.
+					// Private settings are stored as strings so we check against "0"
+					$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
+					if ($notification_setting === "0") {
 						continue;
 					}
 
-					// figure out the link
-					switch($type) {
-						case 'annotation':
-							//@todo permalinks for comments?
-							if ($parent = get_entity($object->entity_guid)) {
-								$link = $parent->getURL();
-							} else {
-								$link = 'Unavailable';
-							}
-							break;
-						default:
-							$link = $object->getURL();
-							break;
-					}
-
-					$owner = get_entity($object->owner_guid);
-					$type_key = "mentions:notification_types:$type";
-					if ($subtype = $object->getSubtype()) {
-						$type_key .= ":$subtype";
-					}
-
+					$link = $object->getURL();
+					$type_key = "mentions:notification_types:$type:$subtype";
 					$type_str = elgg_echo($type_key);
-					$subject = sprintf(elgg_echo('mentions:notification:subject'), $owner->name, $type_str);
+					$subject = elgg_echo('mentions:notification:subject', array($owner->name, $type_str));
 
-					// use the search function to pull out relevant parts of the content
-					//$content = search_get_highlighted_relevant_substrings($content, "@{$user->username}");
+					$body = elgg_echo('mentions:notification:body', array(
+						$owner->name,
+						$type_str,
+						$link,
+					));
 
-					$body = sprintf(elgg_echo('mentions:notification:body'), $owner->name, $type_str, $content, $link);
-
-					if (notify_user($user->getGUID(), $CONFIG->site->getGUID(), $subject, $body)) {
-						$notified_guids[] = $user->getGUID();
-					}
+					notify_user($user->getGUID(), $owner->getGUID(), $subject, $body);
 				}
 			}
 		}
