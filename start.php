@@ -8,8 +8,7 @@ elgg_register_event_handler('init', 'system', 'mentions_init');
 
 function mentions_init() {
 
-	// Register our post processing hook
-	elgg_register_plugin_hook_handler('output', 'page', 'mentions_rewrite');
+	elgg_register_event_handler('pagesetup', 'system', 'mentions_get_views');
 
 	// can't use notification hooks here because of many reasons
 	// only check against annotations:generic_comment and entity:object
@@ -27,11 +26,17 @@ function mentions_get_regex() {
 	return '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
 }
 
+function mentions_get_views() {
+	// allow plugins to add additional views to be processed for usernames
+	$views = array('output/longtext');
+	$views = elgg_trigger_plugin_hook('get_views', 'mentions', null, $views);
+	foreach ($views as $view) {
+		elgg_register_plugin_hook_handler('view', $view, 'mentions_rewrite');
+	}
+}
+
 /**
- * Rewrites the page content for @username mentions.
- *
- * @todo this should only be done in elgg-output divs. Otherwise, we can
- * introduce links where we don't want them (for example, <head>).
+ * Rewrites a view for @username mentions.
  *
  * @param string $hook    The name of the hook
  * @param string $type    The type of the hook
