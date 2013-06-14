@@ -7,6 +7,7 @@
 elgg_register_event_handler('init', 'system', 'mentions_init');
 
 function mentions_init() {
+	elgg_extend_view('css/elgg', 'css/mentions');
 
 	elgg_register_event_handler('pagesetup', 'system', 'mentions_get_views');
 
@@ -43,21 +44,40 @@ function mentions_get_views() {
  * @param string $content The content of the page
  * @return string
  */
-function mentions_rewrite($hook, $type, $content) {
-	return preg_replace_callback(
-		mentions_get_regex(),
-		create_function(
-			'$matches',
-			'
-				if ($user = get_user_by_username($matches[1])) {
-					return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
-				} else {
-					return $matches[0];
-				}
-			'
-		),
-		$content
-	);
+function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
+
+	$regexp = mentions_get_regex();
+	$returnvalue =  preg_replace_callback($regexp, 'mentions_preg_callback', $returnvalue);
+	
+	return $returnvalue;
+}
+
+/**
+ * Used as a callback fro the preg_replace in mentions_rewrite()
+ *
+ * @param type $matches
+ * @return type str
+ */
+function mentions_preg_callback($matches) {
+	$user = get_user_by_username($matches[1]);
+	$period = '';
+
+	// Catch the trailing period when used as punctuation and not a username.
+	if (!$user && substr($matches[1], -1) == '.') {
+		$user = get_user_by_username(rtrim($matches[1], '.'));
+		$period = '.';
+	}
+
+	if ($user) {
+		if (elgg_get_plugin_setting('fancy_links', 'mentions')) {
+			$icon = "<img class='pas mentions-user-icon' src='" . $user->getIcon('topbar') ."' />";
+			return "<a class='mentions-user-link' href=\"{$user->getURL()}\">$icon{$user->name}</a>$period";
+		} else {
+			return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
+		}
+	} else {
+		return $matches[0];
+	}
 }
 
 /**
@@ -69,7 +89,6 @@ function mentions_rewrite($hook, $type, $content) {
  * @return void
  */
 function mentions_notification_handler($event, $event_type, $object) {
-
 	// excludes messages - otherwise an endless loop of notifications occur!
 	if (elgg_instanceof($object, 'object', 'messages')) {
 		return;
@@ -93,7 +112,14 @@ function mentions_notification_handler($event, $event_type, $object) {
 			// match against the 2nd index since the first is everything
 			foreach ($matches[1] as $username) {
 
-				if (!$user = get_user_by_username($username)) {
+				$user = get_user_by_username($username);
+
+				// check for trailing punctuation caught by the regex
+				if (!$user && substr($username, -1) == '.') {
+					$user = get_user_by_username(rtrim($username, '.'));
+				}
+
+				if (!$user) {
 					continue;
 				}
 
