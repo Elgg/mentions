@@ -61,6 +61,7 @@ function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
 function mentions_preg_callback($matches) {
 	$user = get_user_by_username($matches[1]);
 	$period = '';
+	$icon = '';
 
 	// Catch the trailing period when used as punctuation and not a username.
 	if (!$user && substr($matches[1], -1) == '.') {
@@ -70,11 +71,23 @@ function mentions_preg_callback($matches) {
 
 	if ($user) {
 		if (elgg_get_plugin_setting('fancy_links', 'mentions')) {
-			$icon = "<img class='pas mentions-user-icon' src='" . $user->getIcon('topbar') ."' />";
-			return "<a class='mentions-user-link' href=\"{$user->getURL()}\">$icon{$user->name}</a>$period";
+			$icon = elgg_view('output/img', array(
+				'src' => $user->getIconURL('topbar'),
+				'class' => 'pas mentions-user-icon'
+			));
+			$replace = elgg_view('output/url', array(
+				'href' => $user->getURL(),
+				'text' => $icon . $user->name,
+				'class' => 'mentions-user-link'
+			));
 		} else {
-			return "<a href=\"{$user->getURL()}\">{$matches[0]}</a>";
+			$replace = elgg_view('output/url', array(
+				'href' => $user->getURL(),
+				'text' => $user->name,
+			));
 		}
+
+		return $replace .= $period;
 	} else {
 		return $matches[0];
 	}
