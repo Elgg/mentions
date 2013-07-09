@@ -18,6 +18,10 @@ function mentions_init() {
 
 	// @todo This will result in multiple notifications for an edited entity so we don't do this
 	//register_elgg_event_handler('update', 'all', 'mentions_notification_handler');
+
+	// add option to the personal notifications form
+	elgg_extend_view('notifications/subscriptions/personal', 'mentions/notification_settings');
+	elgg_register_plugin_hook_handler('action', 'notificationsettings/save', 'mentions_save_settings');
 }
 
 function mentions_get_regex() {
@@ -179,4 +183,23 @@ function mentions_notification_handler($event, $event_type, $object) {
 			}
 		}
 	}
+}
+
+/**
+ * Save mentions-specific info from the notification form
+ *
+ * @param type $hook
+ * @param type $type
+ * @param type $value
+ * @param type $params
+ */
+function mentions_save_settings($hook, $type, $value, $params) {
+	$notify = (bool) get_input('mentions_notify');
+	$user = get_entity(get_input('guid'));
+
+	if (!elgg_set_plugin_user_setting('notify', $notify, $user->getGUID(), 'mentions')) {
+		register_error(elgg_echo('mentions:settings:failed'));
+	}
+
+	return;
 }

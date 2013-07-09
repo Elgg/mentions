@@ -3,7 +3,7 @@
  * User setting for mentions
  */
 
-$user = elgg_get_logged_in_user_entity();
+$user = elgg_get_page_owner_entity();
 
 // if user has never set this, default it to on
 if (false === elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions')) {
@@ -12,18 +12,20 @@ if (false === elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions
 
 $notify_label = elgg_echo('mentions:settings:send_notification');
 
-$notify_field = elgg_view('input/dropdown', array (
-	'name' => 'params[notify]',
-	'options_values' => array(
-		1 => elgg_echo('option:yes'),
-		0 => elgg_echo('option:no')
-	),
-	'value' => (int) elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions')
-));
+$options = array(
+	'name' => 'mentions_notify',
+	'value' => 1
+);
+
+if (elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions')) {
+	$options['checked'] = 'checked';
+}
+
+$notify_field = elgg_view('input/checkbox', $options);
 
 echo <<<___END
 <p>
-	<label>$notify_label: $notify_field</label>
+	<label>$notify_field $notify_label</label>
 </p>
 ___END;
 ?>
