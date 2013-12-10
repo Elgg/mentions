@@ -26,8 +26,9 @@ function mentions_init() {
 
 function mentions_get_regex() {
 	// @todo this won't work for usernames that must be html encoded.
+	// @todo to avoid matching emails this should not match where @ is preceded by [a-z0-9]
 	// get all chars with unicode 'letter' or 'mark' properties or a number _ or .,
-	// preceeded by @, and possibly surrounded by word boundaries.
+	// preceded by @, and possibly surrounded by word boundaries.
 	return '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
 }
 
@@ -43,69 +44,109 @@ function mentions_get_views() {
 /**
  * Rewrites a view for @username mentions.
  *
- * @param string $hook    The name of the hook
- * @param string $type    The type of the hook
- * @param string $content The content of the page
+ * @param string  $hook   "view"
+ * @param string  $type   The name of the view
+ * @param string  $value  The content of the view
+ * @param mixed[] $params The parameters of the view hook
  * @return string
  */
-function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
-
+function mentions_rewrite($hook, $type, $value, $params) {
 	$regexp = mentions_get_regex();
-	$returnvalue =  preg_replace_callback($regexp, 'mentions_preg_callback', $returnvalue);
-	
-	return $returnvalue;
+	return preg_replace_callback($regexp, 'mentions_preg_callback', $value);
 }
 
 /**
  * Used as a callback fro the preg_replace in mentions_rewrite()
  *
- * @param type $matches
- * @return type str
+ * @param string[] $matches
+ * @return string
  */
 function mentions_preg_callback($matches) {
-	$user = get_user_by_username($matches[1]);
-	$period = '';
-	$icon = '';
-
-	// Catch the trailing period when used as punctuation and not a username.
-	if (!$user && substr($matches[1], -1) == '.') {
-		$user = get_user_by_username(rtrim($matches[1], '.'));
-		$period = '.';
-	}
-
-	if ($user) {
-		if (elgg_get_plugin_setting('fancy_links', 'mentions')) {
-			$icon = elgg_view('output/img', array(
-				'src' => $user->getIconURL('topbar'),
-				'class' => 'pas mentions-user-icon'
-			));
-			$replace = elgg_view('output/url', array(
-				'href' => $user->getURL(),
-				'text' => $icon . $user->name,
-				'class' => 'mentions-user-link'
-			));
-		} else {
-			$replace = elgg_view('output/url', array(
-				'href' => $user->getURL(),
-				'text' => $user->name,
-			));
-		}
-
-		return $replace .= $period;
-	} else {
+	$parsed = mentions_parse_username($matches[1]);
+	if (!$parsed['user']) {
 		return $matches[0];
 	}
+
+	return elgg_view(mentions_get_link_view(), array(
+		'user' => $parsed['user'],
+		'trailing' => $parsed['trailing'],
+		'matches' => $matches,
+	));
+}
+
+/**
+ * Parse a username into a user object and a trailing string (e.g. a period in a sentence).
+ *
+ * @param string $match
+ * @return array with keys "user" (ElggUser|false) and "trailing" (string)
+ */
+function mentions_parse_username($match) {
+	$user = get_user_by_username($match);
+	if ($user) {
+		return array(
+			'user' => $user,
+			'trailing' => '',
+		);
+	}
+	// Catch any trailing period(s) when used as punctuation and not a username.
+	if (substr($match, -1) === '.') {
+		$username = rtrim($match, '.');
+		$user = get_user_by_username($username);
+		if ($user) {
+			return array(
+				'user' => $user,
+				'trailing' => substr($match, strlen($username)),
+			);
+		}
+	}
+	return array(
+		'user' => false,
+		'trailing' => $match,
+	);
+}
+
+/**
+ * Get the view name used to replace @username text
+ *
+ * @return string
+ */
+function mentions_get_link_view() {
+	static $view;
+	if ($view === null) {
+		$view = "mentions/links/" . mentions_get_link_style();
+		$view = elgg_trigger_plugin_hook('get_link_view', 'mentions', null, $view);
+	}
+	return $view;
+}
+
+/**
+ * Get the style of link: "fancy", "default", or "plain"
+ *
+ * @return string
+ */
+function mentions_get_link_style() {
+	$plugin = elgg_get_plugin_from_id('mentions');
+	$style = $plugin->getSetting('link_style');
+	if (!$style) {
+		// migrate old fancy_links setting
+		$style = $plugin->getSetting('fancy_links') ? 'fancy' : 'default';
+		$plugin->setSetting('link_style', $style);
+		$plugin->unsetSetting('fancy_links');
+	}
+	return $style;
 }
 
 /**
  * Catch all create events and scan for @username tags to notify user.
  *
- * @param string   $event      The event name
- * @param string   $event_type The event type
- * @param ElggData $object     The object that was created
+ * @param string $event      The event name
+ * @param string $event_type The event type
+ * @param mixed  $object     The object that was created
  * @return void
  */
 function mentions_notification_handler($event, $event_type, $object) {
+	/* @var ElggObject|ElggAnnotation $object */
+
 	// excludes messages - otherwise an endless loop of notifications occur!
 	if (elgg_instanceof($object, 'object', 'messages')) {
 		return;
@@ -124,63 +165,64 @@ function mentions_notification_handler($event, $event_type, $object) {
 
 	foreach ($fields as $field) {
 		$content = $object->$field;
+
 		// it's ok in this case if 0 matches == FALSE
-		if (preg_match_all(mentions_get_regex(), $content, $matches)) {
-			// match against the 2nd index since the first is everything
-			foreach ($matches[1] as $username) {
+		if (!preg_match_all(mentions_get_regex(), $content, $matches)) {
+			continue;
+		}
 
-				$user = get_user_by_username($username);
+		// match against the 2nd index since the first is everything
+		foreach ($matches[1] as $username) {
 
-				// check for trailing punctuation caught by the regex
-				if (!$user && substr($username, -1) == '.') {
-					$user = get_user_by_username(rtrim($username, '.'));
-				}
+			$parsed = mentions_parse_username($username);
+			if (!$parsed['user']) {
+				continue;
+			}
+			$user = $parsed['user'];
+			/* @var ElggUser $user */
 
-				if (!$user) {
+			// user must have access to view object/annotation
+			if ($type == 'annotation') {
+				$annotated_entity = $object->getEntity();
+				if (!$annotated_entity || !has_access_to_entity($annotated_entity, $user)) {
 					continue;
 				}
-
-				// user must have access to view object/annotation
-				if ($type == 'annotation') {
-					$annotated_entity = $object->getEntity();
-					if (!$annotated_entity || !has_access_to_entity($annotated_entity, $user)) {
-						continue;
-					}
-				} else {
-					if (!has_access_to_entity($object, $user)) {
-						continue;
-					}
-				}
-
-				if (!in_array($user->getGUID(), $notified_guids)) {
-					$notified_guids[] = $user->getGUID();
-
-					// if they haven't set the notification status default to sending.
-					// Private settings are stored as strings so we check against "0"
-					$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
-					if ($notification_setting === "0") {
-						continue;
-					}
-
-					$link = $object->getURL();
-					$type_key = "mentions:notification_types:$type:$subtype";
-					$type_str = elgg_echo($type_key);
-					if ($type_str == $type_key) {
-						// plugins can add to the list of mention objects by defining
-						// the language string 'mentions:notification_types:<type>:<subtype>'
-						continue;
-					}
-					$subject = elgg_echo('mentions:notification:subject', array($owner->name, $type_str));
-
-					$body = elgg_echo('mentions:notification:body', array(
-						$owner->name,
-						$type_str,
-						$link,
-					));
-
-					notify_user($user->getGUID(), $owner->getGUID(), $subject, $body);
+			} else {
+				if (!has_access_to_entity($object, $user)) {
+					continue;
 				}
 			}
+
+			if (in_array($user->getGUID(), $notified_guids)) {
+				continue;
+			}
+
+			$notified_guids[] = $user->getGUID();
+
+			// if they haven't set the notification status default to sending.
+			// Private settings are stored as strings so we check against "0"
+			$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
+			if ($notification_setting === "0") {
+				continue;
+			}
+
+			$link = $object->getURL();
+			$type_key = "mentions:notification_types:$type:$subtype";
+			$type_str = elgg_echo($type_key);
+			if ($type_str == $type_key) {
+				// plugins can add to the list of mention objects by defining
+				// the language string 'mentions:notification_types:<type>:<subtype>'
+				continue;
+			}
+			$subject = elgg_echo('mentions:notification:subject', array($owner->name, $type_str));
+
+			$body = elgg_echo('mentions:notification:body', array(
+				$owner->name,
+				$type_str,
+				$link,
+			));
+
+			notify_user($user->getGUID(), $owner->getGUID(), $subject, $body);
 		}
 	}
 }
@@ -188,10 +230,10 @@ function mentions_notification_handler($event, $event_type, $object) {
 /**
  * Save mentions-specific info from the notification form
  *
- * @param type $hook
- * @param type $type
- * @param type $value
- * @param type $params
+ * @param string $hook   "action"
+ * @param string $type   "notificationsettings/save"
+ * @param bool   $value  true
+ * @param null   $params unused
  */
 function mentions_save_settings($hook, $type, $value, $params) {
 	$notify = (bool) get_input('mentions_notify');
