@@ -8,6 +8,10 @@ elgg_register_event_handler('init', 'system', 'mentions_init');
 
 function mentions_init() {
 	elgg_extend_view('css/elgg', 'css/mentions');
+	elgg_extend_view('js/elgg', 'js/mentions');
+	
+	elgg_extend_view('input/longtext', 'mentions/popup');
+	elgg_extend_view('input/plaintext', 'mentions/popup');
 
 	elgg_register_event_handler('pagesetup', 'system', 'mentions_get_views');
 
