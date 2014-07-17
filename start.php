@@ -16,7 +16,6 @@ function mentions_init() {
 	elgg_register_event_handler('pagesetup', 'system', 'mentions_get_views');
 
 	// can't use notification hooks here because of many reasons
-	// only check against annotations:generic_comment and entity:object
 	elgg_register_event_handler('create', 'object', 'mentions_notification_handler');
 	elgg_register_event_handler('create', 'annotation', 'mentions_notification_handler');
 
