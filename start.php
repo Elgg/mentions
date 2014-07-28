@@ -181,7 +181,12 @@ function mentions_notification_handler($event, $event_type, $object) {
 						$link,
 					));
 
-					notify_user($user->getGUID(), $owner->getGUID(), $subject, $body);
+					$params = array(
+						'object' => $object,
+						'action' => 'mention',
+					);
+
+					notify_user($user->getGUID(), $owner->getGUID(), $subject, $body, $params);
 				}
 			}
 		}
