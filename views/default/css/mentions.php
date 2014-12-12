@@ -28,3 +28,15 @@
 	color: white;
 	background-color: #25AAE1;
 }
+
+#mentions-popup {
+	padding: 0;
+}
+
+#mentions-popup .elgg-autocomplete-item {
+	padding: 6px;
+}
+
+#mentions-popup .mentions-autocomplete > li:hover {
+	background-color: #DCDCDC;
+}
