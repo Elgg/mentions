@@ -29,7 +29,7 @@ define(function(require) {
 	var handleResponse = function (json) {
 		var userOptions = '';
 		$(json).each(function(key, user) {
-			userOptions += user.label;
+			userOptions += '<li data-username="' + user.desc + '">' + user.label + "</li>";
 		});
 
 		if (!userOptions) {
@@ -38,13 +38,13 @@ define(function(require) {
 			return;
 		}
 
-		$('#mentions-popup > .elgg-body').html(userOptions);
+		$('#mentions-popup > .elgg-body').html('<ul class="mentions-autocomplete">' + userOptions + "</ul>");
 		$('#mentions-popup').removeClass('hidden');
 
-		$('.mentions-popup .elgg-autocomplete-item').bind('click', function(e) {
+		$('.mentions-autocomplete > li').bind('click', function(e) {
 			e.preventDefault();
-			var userUrl = $(this).find('a').first().attr('href');
-			var username = userUrl.split('/').pop();
+
+			var username = $(this).data('username');
 
 			// Remove the partial @username string from the first part
 			newBeforeMention = beforeMention.substring(0, position - current.length);
