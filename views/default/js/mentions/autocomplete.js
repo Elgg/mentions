@@ -10,6 +10,24 @@ define(function(require) {
 	var $ = require('jquery');
 	var elgg = require('elgg');
 
+	if (require.specified('ckeditor')) {
+		require(['ckeditor'], function(CKEDITOR) {
+			CKEDITOR.on('instanceCreated', function (e) {
+				e.editor.on('contentDom', function(ev) {
+					var editable = ev.editor.editable();
+
+					editable.attachListener(editable, 'keyup', function() {
+						textarea = e.editor;
+						mentionsEditor = 'ckeditor';
+						content = e.editor.document.getBody().getText();
+						position = ev.editor.getSelection().getRanges()[0].startOffset;
+						autocomplete(content, position);
+					});
+				});
+			});
+		});
+	};
+
 	var getCursorPosition = function(el) {
 		var pos = 0;
 
@@ -114,20 +132,6 @@ define(function(require) {
 				autocomplete(content, position);
 			}
 		});
-
-		if (typeof CKEDITOR !== 'undefined') {
-			CKEDITOR.on('instanceCreated', function (e) {
-				e.editor.on('contentDom', function(ev) {
-					ev.editor.document.on('keyup', function(eve) {
-						textarea = e.editor;
-						mentionsEditor = 'ckeditor';
-						position = ev.editor.getSelection().getRanges()[0].startOffset;
-						content = e.editor.document.getBody().getText();
-						autocomplete(content, position);
-					});
-				});
-			});
-		}
 
 		setTimeout(function () {
 			if (typeof tinyMCE !== 'undefined') {
