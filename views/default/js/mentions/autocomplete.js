@@ -12,7 +12,8 @@ define(function(require) {
 
 	if (require.specified('ckeditor')) {
 		require(['ckeditor'], function(CKEDITOR) {
-			CKEDITOR.on('instanceCreated', function (e) {
+			CKEDITOR.on('instanceLoaded', function (e) {
+			//CKEDITOR.on('instanceCreated', function (e) {
 				e.editor.on('contentDom', function(ev) {
 					var editable = ev.editor.editable();
 
@@ -20,8 +21,8 @@ define(function(require) {
 						textarea = e.editor;
 						mentionsEditor = 'ckeditor';
 						content = e.editor.document.getBody().getText();
-						position = ev.editor.getSelection().getRanges()[0].startOffset;
-						autocomplete(content, position);
+						html_content = e.editor.getData();
+						autocomplete(content, html_content);
 					});
 				});
 			});
@@ -64,21 +65,28 @@ define(function(require) {
 
 			var username = $(this).data('username');
 
-			// Remove the partial @username string from the first part
-			newBeforeMention = beforeMention.substring(0, position - current.length);
-
-			// Add the complete @username string and the rest of the original
-			// content after the first part
-			var newContent = newBeforeMention + username + afterMention;
-
 			// Set new content for the textarea
 			if (mentionsEditor == 'ckeditor') {
+				var textBefore=html_content.substring(0,html_content.lastIndexOf(' @'+current))
+				var newContent = textBefore+' @'+username;
 				textarea.setData(newContent, function() {
-					this.checkDirty(); // true
+				this.checkDirty(); // true
 				});
 			} else if (mentionsEditor == 'tinymce') {
+				// Remove the partial @username string from the first part
+				newBeforeMention = beforeMention.substring(0, position - current.length);
+
+				// Add the complete @username string and the rest of the original
+				// content after the first part
+				var newContent = newBeforeMention + username + afterMention;
 				tinyMCE.activeEditor.setContent(newContent);
 			} else {
+				// Remove the partial @username string from the first part
+				newBeforeMention = beforeMention.substring(0, position - current.length);
+
+				// Add the complete @username string and the rest of the original
+				// content after the first part
+				var newContent = newBeforeMention + username + afterMention;
 				$(textarea).val(newContent);
 			}
 
@@ -87,23 +95,42 @@ define(function(require) {
 		});
 	};
 
-	var autocomplete = function (content, position) {
-		beforeMention = content.substring(0, position);
-		afterMention = content.substring(position);
-		parts = beforeMention.split(' ');
-		current = parts[parts.length - 1];
+	var autocomplete = function (content, position_or_data) {
+		if (mentionsEditor == 'ckeditor') {
+			edata = position_or_data;
+			current = "";
+			if (content.length != 0) {
+				//Split to get last item
+				var words = content.split(/ +/);
+				var html_words = edata.split(/ +|\r\n|\n/);
+				var last_word = words[words.length -1];
+				var last_html_word = html_words[html_words.length -2];
+				if (last_word.match(/^@\w{3,}/)&& (last_html_word == last_word+'</p>' || last_html_word == '<p>'+last_word+'</p>')) {
+					var search_word = last_word.replace('@','');
+					if (! search_word.match(/\W/)) {
+						current = last_word;
+					};
+				};
+			};
+		} else {
+			position = position_or_data;
+			beforeMention = content.substring(0, position);
+			afterMention = content.substring(position);
+			parts = beforeMention.split(' ');
+			current = parts[parts.length - 1];
 
-		precurrent = false;
-		if (parts.length > 1) {
-			precurrent = parts[parts.length - 2];
-			if (!current.match(/@/)) {
-				if (precurrent.match(/@/)) {
-					current = precurrent + ' ' + current;
+			precurrent = false;
+			if (parts.length > 1) {
+				precurrent = parts[parts.length - 2];
+				if (!current.match(/@/)) {
+					if (precurrent.match(/@/)) {
+						current = precurrent + ' ' + current;
+					}
 				}
 			}
 		}
 
-		if (current.match(/@/) && current.length > 1) {
+		if (current.match(/@/) && current.length > 4) {
 			current = current.replace('@', '');
 			$('#mentions-popup').removeClass('hidden');
 
