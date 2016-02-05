@@ -9,8 +9,9 @@
 define(function(require) {
 	var $ = require('jquery');
 	var elgg = require('elgg');
+	var config = require('mentions/config');
 
-	if (require.specified('ckeditor')) {
+	if (config.editor == 'ckeditor') {
 		require(['ckeditor'], function(CKEDITOR) {
 			CKEDITOR.on('instanceCreated', function (e) {
 				e.editor.on('contentDom', function(ev) {
