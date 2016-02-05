@@ -9,41 +9,11 @@
 define(function(require) {
 	var $ = require('jquery');
 	var elgg = require('elgg');
+	var callback;
 
-	if (require.specified('ckeditor')) {
-		require(['ckeditor'], function(CKEDITOR) {
-			CKEDITOR.on('instanceCreated', function (e) {
-				e.editor.on('contentDom', function(ev) {
-					var editable = ev.editor.editable();
-
-					editable.attachListener(editable, 'keyup', function() {
-						textarea = e.editor;
-						mentionsEditor = 'ckeditor';
-						content = e.editor.document.getBody().getText();
-						position = ev.editor.getSelection().getRanges()[0].startOffset;
-						autocomplete(content, position);
-					});
-				});
-			});
-		});
-	};
-
-	var getCursorPosition = function(el) {
-		var pos = 0;
-
-		if ('selectionStart' in el) {
-			pos = el.selectionStart;
-		} else if ('selection' in document) {
-			el.focus();
-			var Sel = document.selection.createRange();
-			var SelLength = document.selection.createRange().text.length;
-			Sel.moveStart('character', - el.value.length);
-			pos = Sel.text.length - SelLength;
-		}
-
-		return pos;
-	};
-
+	/**
+	 * Display AJAX response and provide new content for the editor
+	 */
 	var handleResponse = function (json) {
 		var userOptions = '';
 		$(json).each(function(key, user) {
@@ -51,8 +21,7 @@ define(function(require) {
 		});
 
 		if (!userOptions) {
-			$('#mentions-popup > .elgg-body').html('<div class="elgg-ajax-loader"></div>');
-			$('#mentions-popup').addClass('hidden');
+			hide();
 			return;
 		}
 
@@ -69,25 +38,18 @@ define(function(require) {
 
 			// Add the complete @username string and the rest of the original
 			// content after the first part
-			var newContent = newBeforeMention + username + afterMention;
+			newContent = newBeforeMention + username + afterMention;
 
-			// Set new content for the textarea
-			if (mentionsEditor == 'ckeditor') {
-				textarea.setData(newContent, function() {
-					this.checkDirty(); // true
-				});
-			} else if (mentionsEditor == 'tinymce') {
-				tinyMCE.activeEditor.setContent(newContent);
-			} else {
-				$(textarea).val(newContent);
-			}
+			callback(newContent);
 
 			// Hide the autocomplete popup
-			$('#mentions-popup').addClass('hidden');
+			hide();
 		});
 	};
 
-	var autocomplete = function (content, position) {
+	var autocomplete = function (content, position, editorCallback) {
+		callback = editorCallback;
+
 		beforeMention = content.substring(0, position);
 		afterMention = content.substring(position);
 		parts = beforeMention.split(' ');
@@ -95,7 +57,8 @@ define(function(require) {
 
 		precurrent = false;
 		if (parts.length > 1) {
-			precurrent = parts[parts.length - 2];
+			precurrent = parts[parts.length - 1];
+
 			if (!current.match(/@/)) {
 				if (precurrent.match(/@/)) {
 					current = precurrent + ' ' + current;
@@ -109,56 +72,41 @@ define(function(require) {
 
 			var options = {success: handleResponse};
 
-			elgg.get(elgg.config.wwwroot + 'livesearch?q=' + current + '&match_on=users', options);
-		} else {
-			$('#mentions-popup > .elgg-body').html('<div class="elgg-ajax-loader"></div>');
-			$('#mentions-popup').addClass('hidden');
+			elgg.get('livesearch?q=' + current + '&match_on=users', options);
 		}
 	};
 
-	var init = function() {
-		$('textarea').bind('keyup', function(e) {
+	/**
+	 * Check if entered key represents a valid character for a username
+	 *
+	 * 8  = backspace
+	 * 13 = enter
+	 * 32 = space
+	 *
+	 * @param {String} keyCode
+	 * @return {Boolean}
+	 */
+	var isValidKey = function(keyCode) {
+		var keyCodes = [8, 13, 32];
 
-			// Hide on backspace and enter
-			if (e.which == 8 || e.which == 13) {
-				$('#mentions-popup > .elgg-body').html('<div class="elgg-ajax-loader"></div>');
-				$('#mentions-popup').addClass('hidden');
-			} else {
-				textarea = $(this);
-				content = $(this).val();
-				position = getCursorPosition(this);
-				mentionsEditor = 'textarea';
-
-				autocomplete(content, position);
-			}
-		});
-
-		setTimeout(function () {
-			if (typeof tinyMCE !== 'undefined') {
-				for (var i = 0; i < tinymce.editors.length; i++) {
-					 tinymce.editors[i].onKeyUp.add(function (ed, e) {
-
-						mentionsEditor = 'tinymce';
-
-						// Hide on backspace and enter
-						if (e.keyCode == 8 || e.keyCode == 13) {
-							$('#mentions-popup > .elgg-body').html('<div class="elgg-ajax-loader"></div>');
-							$('#mentions-popup').addClass('hidden');
-						} else {
-							position = ed.selection.getRng(1).startOffset;
-							content = tinyMCE.activeEditor.getContent({format : 'text'});
-
-							autocomplete(content, position);
-						}
-					});
-				}
-			}
-		}, 500);
+		if (keyCodes.indexOf(keyCode) == -1) {
+			return true;
+		} else {
+			hide();
+			return;
+		}
 	};
 
-	elgg.register_hook_handler('init', 'system', init, 9999);
+	/**
+	 * Hide the autocomplete results
+	 */
+	var hide = function() {
+		$('#mentions-popup > .elgg-body').html('<div class="elgg-ajax-loader"></div>');
+		$('#mentions-popup').addClass('hidden');
+	};
 
 	return {
-		autocomplete: autocomplete
+		autocomplete: autocomplete,
+		isValidKey: isValidKey
 	};
 });

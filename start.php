@@ -8,7 +8,9 @@ elgg_register_event_handler('init', 'system', 'mentions_init');
 
 function mentions_init() {
 	elgg_extend_view('css/elgg', 'css/mentions');
-	elgg_require_js('mentions/autocomplete');
+
+	elgg_register_simplecache_view('js/mentions/editor');
+	elgg_require_js('mentions/editor');
 
 	elgg_extend_view('input/longtext', 'mentions/popup');
 	elgg_extend_view('input/plaintext', 'mentions/popup');
