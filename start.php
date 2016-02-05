@@ -10,6 +10,8 @@ function mentions_init() {
 	elgg_extend_view('css/elgg', 'css/mentions');
 	elgg_require_js('mentions/autocomplete');
 
+	elgg_register_simplecache_view('js/mentions/config');
+
 	elgg_extend_view('input/longtext', 'mentions/popup');
 	elgg_extend_view('input/plaintext', 'mentions/popup');
 
