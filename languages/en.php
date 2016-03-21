@@ -19,7 +19,7 @@ To see the full post, click on the link below:
 	'mentions:settings:send_notification' => 'Send a notification when someone @mentions you in a post?',
 
 	// admin
-	'mentions:fancy_links' => 'Replce @mentions with a small picture of the user in addition to the user\'s name',
+	'mentions:fancy_links' => 'Replace @mentions with a small picture of the user in addition to the user\'s name',
 
 	'mentions:settings:failed' => 'Could not save mentions settings.'
 );
