@@ -9,14 +9,31 @@ elgg_register_event_handler('init', 'system', 'mentions_init');
 function mentions_init() {
 	elgg_extend_view('css/elgg', 'css/mentions');
 
-	elgg_register_simplecache_view('js/mentions/editor');
-	elgg_require_js('mentions/editor');
+//	elgg_register_simplecache_view('js/mentions/editor');
+//	elgg_require_js('mentions/editor');
+
+	$plugins = array(
+		'ckeditor',
+		'tinymce',
+		'extended_tinymce'
+	);
+
+	$editor = 'plaintext';
+	foreach ($plugins as $plugin) {
+		if (elgg_is_active_plugin($plugin)) {
+			$editor = $plugin;
+		}
+	}
+	if ($editor == 'extended_tinymce')
+		$editor = 'tinymce';
+
+	elgg_require_js("mentions/editors/{$editor}");
 
 	elgg_extend_view('input/longtext', 'mentions/popup');
 	elgg_extend_view('input/plaintext', 'mentions/popup');
 
-	elgg_register_event_handler('pagesetup', 'system', 'mentions_get_views');
-
+	//elgg_register_event_handler('pagesetup', 'system', 'mentions_get_views');
+	mentions_get_views();
 	// can't use notification hooks here because of many reasons
 	elgg_register_event_handler('create', 'object', 'mentions_notification_handler');
 	elgg_register_event_handler('create', 'annotation', 'mentions_notification_handler');
@@ -38,7 +55,7 @@ function mentions_get_regex() {
 
 function mentions_get_views() {
 	// allow plugins to add additional views to be processed for usernames
-	$views = array('output/longtext');
+	$views = array('output/longtext', 'river/item');
 	$views = elgg_trigger_plugin_hook('get_views', 'mentions', null, $views);
 	foreach ($views as $view) {
 		elgg_register_plugin_hook_handler('view', $view, 'mentions_rewrite');
@@ -54,7 +71,6 @@ function mentions_get_views() {
  * @return string
  */
 function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
-
 	$regexp = mentions_get_regex();
 	$returnvalue =  preg_replace_callback($regexp, 'mentions_preg_callback', $returnvalue);
 

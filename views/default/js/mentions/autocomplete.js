@@ -11,6 +11,49 @@ define(function(require) {
 	var elgg = require('elgg');
 	var callback;
 
+ /**
+  *  positionMentionPopup()
+	*
+	*  get position in pixels of the editor's cursor and place the mention popup relative to it.
+	**/
+
+	var positionMentionPopup = function() {
+		if (typeof tinyMCE.activeEditor != "undefined")
+		{
+			var editor = tinyMCE.activeEditor;
+			//get position of tinyMCE widgets
+			var tinymcePosition = $(editor.getContainer()).position();
+			var toolbarPosition = $(editor.getContainer()).find(".mce-toolbar").first();
+
+			// get position of HTML node being edited
+
+			var nodePosition = $(editor.selection.getNode()).position();
+			var textareaTop = 0;
+			var textareaLeft = 0;
+
+			//We have Y-axis position (via nodePosition.top), it's time to get X:
+
+			if (editor.selection.getRng().getClientRects().length > 0) {
+	    	textareaTop = editor.selection.getRng().getClientRects()[0].top + 	editor.selection.getRng().getClientRects()[0].height;
+	    	textareaLeft = editor.selection.getRng().getClientRects()[0].left;
+			} else {
+	    	textareaTop = parseInt($($this.selection.getNode()).css("font-size")) * 1.3 + 	nodePosition.top;
+	    	textareaLeft = nodePosition.left;
+			}
+			//We have in textareaTop && textareaLeft positions of caret relative to the TinyMCE editor Window (textarea). Now it's time to get position relative to the whole page (browser window):
+
+			var position = $(editor.getContainer()).offset();
+			var caretPosition = {
+	    	top:  tinymcePosition.top + toolbarPosition.innerHeight() + textareaTop,
+	    	left: tinymcePosition.left + textareaLeft + position.left
+			}
+
+			$('#mentions-popup').css('top', caretPosition.top);
+			$('#mentions-popup').css('left', caretPosition.left);
+		}
+		return;
+	}
+
 	/**
 	 * Display AJAX response and provide new content for the editor
 	 */
@@ -34,12 +77,13 @@ define(function(require) {
 			var username = $(this).data('username');
 
 			// Remove the partial @username string from the first part
-			newBeforeMention = beforeMention.substring(0, position - current.length);
+			newBeforeMention = beforeMention.substring(0, sharedPosition - current.length);
 
 			// Add the complete @username string and the rest of the original
 			// content after the first part
 			newContent = newBeforeMention + username + afterMention;
-
+			// put line breaks back into text
+			newContent = newContent.replace(/\r?\n|\r/g, '<br>');
 			callback(newContent);
 
 			// Hide the autocomplete popup
@@ -47,32 +91,51 @@ define(function(require) {
 		});
 	};
 
-	var autocomplete = function (content, position, editorCallback) {
-		callback = editorCallback;
+	// check if the last word in the text is a username and if it is then open the autocomplete input for users
+	var autocomplete = function (node, position, editorCallback) {
+		if (node.data)
+		{
+			callback = editorCallback;
+			var words;
+			// declare a variable that can be accessed by other functions
+			sharedPosition = position;
+			beforeMention = node.data.substring(0,position);
+			// duplicate this variable as we need to process it and also keep the original for use when processing the ajax response
+			stringCount = beforeMention;
+			afterMention = node.data.substring(position);
 
-		beforeMention = content.substring(0, position);
-		afterMention = content.substring(position);
-		parts = beforeMention.split(' ');
-		current = parts[parts.length - 1];
+			// strip line breaks
+			stringCount = stringCount.replace(/\r?\n|\r/g, ' ');
 
-		precurrent = false;
-		if (parts.length > 1) {
-			precurrent = parts[parts.length - 1];
+			// split the text into words, previous to the current character
+			words = stringCount.split(' ');
+			// remove empty values
+			words = jQuery.grep(words, function(value) {
+			  return value != "";
+			});
 
-			if (!current.match(/@/)) {
-				if (precurrent.match(/@/)) {
-					current = precurrent + ' ' + current;
-				}
+			// grab the current word and get nothing if no words exist
+			if (words.length > 0)
+				current = words[words.length - 1];
+			else
+				current = '';
+
+			// if the current word contains a @ symbol
+			if (current.match(/@/) && current.length > 1) {
+				// remove @ symbol from current to allow us to use current in a search query
+				current = current.replace('@', '');
+
+				// move mention popup to cursor
+				positionMentionPopup();
+
+				// show mention popup
+				$('#mentions-popup').removeClass('hidden');
+
+				var options = {success: handleResponse};
+
+				// search for a username matching the current word
+				elgg.get('livesearch?q=' + current + '&match_on=users', options);
 			}
-		}
-
-		if (current.match(/@/) && current.length > 1) {
-			current = current.replace('@', '');
-			$('#mentions-popup').removeClass('hidden');
-
-			var options = {success: handleResponse};
-
-			elgg.get('livesearch?q=' + current + '&match_on=users', options);
 		}
 	};
 

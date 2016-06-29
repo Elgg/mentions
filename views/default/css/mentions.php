@@ -40,3 +40,7 @@
 #mentions-popup .mentions-autocomplete > li:hover {
 	background-color: #DCDCDC;
 }
+
+#mentions-popup h3 {
+	cursor: pointer;
+}
