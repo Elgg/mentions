@@ -125,14 +125,16 @@ define(function(require) {
 				// remove @ symbol from current to allow us to use current in a search query
 				current = current.replace('@', '');
 
-				// move mention popup to cursor
+				var options = {success: handleResponse};
+
+				// replace period characters with html encoded equivalent to prevent hanging
+				current = encodeURIComponent(current.replace(/\./g, '&#46;'));
+
+				// reposition mention popup next to cursor
 				positionMentionPopup();
 
 				// show mention popup
 				$('#mentions-popup').removeClass('hidden');
-
-				var options = {success: handleResponse};
-
 				// search for a username matching the current word
 				elgg.get('livesearch?q=' + current + '&match_on=users', options);
 			}
