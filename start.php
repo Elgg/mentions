@@ -9,14 +9,11 @@ elgg_register_event_handler('init', 'system', 'mentions_init');
 function mentions_init() {
 	elgg_extend_view('css/elgg', 'css/mentions');
 
-//	elgg_register_simplecache_view('js/mentions/editor');
-//	elgg_require_js('mentions/editor');
-
 	elgg_extend_view('input/longtext', 'mentions/popup');
-	//elgg_extend_view('input/plaintext', 'mentions/popup');
+	elgg_extend_view('input/plaintext', 'mentions/popup');
 
-	//elgg_register_event_handler('pagesetup', 'system', 'mentions_get_views');
 	mentions_get_views();
+	
 	// can't use notification hooks here because of many reasons
 	elgg_register_event_handler('create', 'object', 'mentions_notification_handler');
 	elgg_register_event_handler('create', 'annotation', 'mentions_notification_handler');
