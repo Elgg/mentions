@@ -3,7 +3,7 @@
  * French language translation.
  */
 
-$french = array(
+return array(
 	'mentions:notification:subject' => "%s vous a mentionné dans %s",
 	'mentions:notification:body' => "%s vous a mentionné dans %s.
 
@@ -24,4 +24,3 @@ Pour voir la publication complète, cliquez sur le lien suivant :
 	'mentions:settings:failed' => "Impossible d'enregigtrer les paramètres des mentions.",
 );
 
-add_translation("fr", $french);
