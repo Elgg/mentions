@@ -124,15 +124,26 @@ function mentions_notification_handler($event, $event_type, $object) {
 	}
 	$type_str = elgg_echo($type_key);
 
-	$fields = array(
-		'title', 'description', 'value'
-	);
+	if ($object instanceof ElggAnnotation) {
+		$fields = ['value'];
+	} else {
+		$fields = ['title', 'description'];
+		$fields = elgg_trigger_plugin_hook('get_fields', 'mentions', ['entity' => $object], $fields);
+	}
+
+	if (empty($fields)) {
+		return;
+	}
 
 	// store the guids of notified users so they only get one notification per creation event
 	$notified_guids = array();
 
 	foreach ($fields as $field) {
 		$content = $object->$field;
+		if (is_array($content)) {
+			$content = implode(' ', $content);
+		}
+		
 		// it's ok in this case if 0 matches == FALSE
 		if (preg_match_all(mentions_get_regex(), $content, $matches)) {
 			// match against the 2nd index since the first is everything
