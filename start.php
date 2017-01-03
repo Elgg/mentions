@@ -111,14 +111,18 @@ function mentions_preg_callback($matches) {
  * @return void
  */
 function mentions_notification_handler($event, $event_type, $object) {
-	// excludes messages - otherwise an endless loop of notifications occur!
-	if (elgg_instanceof($object, 'object', 'messages')) {
-		return;
-	}
 
 	$type = $object->getType();
 	$subtype = $object->getSubtype();
 	$owner = $object->getOwnerEntity();
+
+	$type_key = "mentions:notification_types:$type:$subtype";
+	if (!elgg_language_key_exists($type_key)) {
+		// plugins can add to the list of mention objects by defining
+		// the language string 'mentions:notification_types:<type>:<subtype>'
+		return;
+	}
+	$type_str = elgg_echo($type_key);
 
 	$fields = array(
 		'title', 'description', 'value'
@@ -168,13 +172,6 @@ function mentions_notification_handler($event, $event_type, $object) {
 					}
 
 					$link = $object->getURL();
-					$type_key = "mentions:notification_types:$type:$subtype";
-					$type_str = elgg_echo($type_key);
-					if ($type_str == $type_key) {
-						// plugins can add to the list of mention objects by defining
-						// the language string 'mentions:notification_types:<type>:<subtype>'
-						continue;
-					}
 					$subject = elgg_echo('mentions:notification:subject', array($owner->name, $type_str));
 
 					$body = elgg_echo('mentions:notification:body', array(
