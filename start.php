@@ -172,32 +172,42 @@ function mentions_notification_handler($event, $event_type, $object) {
 					}
 				}
 
-				if (!in_array($user->getGUID(), $notified_guids)) {
-					$notified_guids[] = $user->getGUID();
-
-					// if they haven't set the notification status default to sending.
-					// Private settings are stored as strings so we check against "0"
-					$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
-					if ($notification_setting === "0") {
-						continue;
-					}
-
-					$link = $object->getURL();
-					$subject = elgg_echo('mentions:notification:subject', array($owner->name, $type_str));
-
-					$body = elgg_echo('mentions:notification:body', array(
-						$owner->name,
-						$type_str,
-						$link,
-					));
-
-					$params = array(
-						'object' => $object,
-						'action' => 'mention',
-					);
-
-					notify_user($user->getGUID(), $owner->getGUID(), $subject, $body, $params);
+				if (in_array($user->guid, $notified_guids)) {
+					continue;
 				}
+
+				$notified_guids[] = $user->guid;
+
+				// if they haven't set the notification status default to sending.
+				// Private settings are stored as strings so we check against "0"
+				$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
+				if ($notification_setting === "0") {
+					continue;
+				}
+
+				if ($user->language) {
+					$language = $user->language;
+				} else {
+					$language = elgg_get_config('language');
+				}
+
+				$link = $object->getURL();
+
+				$localized_type_str = elgg_echo($type_key, [], $language);
+				$subject = elgg_echo('mentions:notification:subject', array($owner->name, $localized_type_str), $language);
+
+				$body = elgg_echo('mentions:notification:body', array(
+					$owner->name,
+					$localized_type_str,
+					$link,
+				), $language);
+
+				$params = array(
+					'object' => $object,
+					'action' => 'mention',
+				);
+
+				notify_user($user->getGUID(), $owner->getGUID(), $subject, $body, $params);
 			}
 		}
 	}
