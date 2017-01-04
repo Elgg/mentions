@@ -29,6 +29,30 @@ function mentions_init() {
 	// add option to the personal notifications form
 	elgg_extend_view('notifications/subscriptions/personal', 'mentions/notification_settings');
 	elgg_register_plugin_hook_handler('action', 'notificationsettings/save', 'mentions_save_settings');
+
+	elgg_register_page_handler('mentions', 'mentions_page_handler');
+}
+
+/**
+ * Handler for /mentions
+ * 
+ * @param array $segments URL segments
+ * @return bool
+ */
+function mentions_page_handler($segments) {
+
+	$page = array_shift($segments);
+
+	switch ($page) {
+		case 'search' :
+			$target_guid = array_shift($segments);
+			echo elgg_view_resource('mentions/search', [
+				'target_guid' => $target_guid,
+			]);
+			return true;
+	}
+
+	return false;
 }
 
 /**
