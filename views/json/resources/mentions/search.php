@@ -14,6 +14,8 @@ $q = str_replace(array('_', '%'), array('\_', '\%'), $q);
 $target_guid = elgg_extract('target_guid', $vars);
 $target = get_entity($target_guid);
 
+$user_guid = elgg_get_logged_in_user_guid();
+
 $dbprefix = elgg_get_config('dbprefix');
 
 $options = [
@@ -24,6 +26,7 @@ $options = [
 	'order_by' => 'ue.name ASC',
 	'wheres' => [
 		"ue.banned = 'no'",
+		"e.guid != $user_guid",
 	],
 	'batch' => true,
 ];
@@ -44,7 +47,6 @@ if ($target instanceof ElggGroup && elgg_get_plugin_setting('restrict_group_sear
 				AND guid_two = $target->guid)
 		";
 } else if (elgg_get_plugin_setting('friends_only_search', 'mentions') && !elgg_check_access_overrides()) {
-	$user_guid = elgg_get_logged_in_user_guid();
 	$options['wheres'][] = "
 		EXISTS (SELECT 1
 				FROM {$dbprefix}entity_relationships
