@@ -37,10 +37,7 @@ function mentions_init() {
  * @return string
  */
 function mentions_get_regex() {
-	// @todo this won't work for usernames that must be html encoded.
-	// get all chars with unicode 'letter' or 'mark' properties or a number _ or .,
-	// preceeded by @, and possibly surrounded by word boundaries.
-	return '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
+	return \Elgg\Mentions\Regex::getRegex();
 }
 
 /**
@@ -67,9 +64,8 @@ function mentions_get_views() {
 function mentions_rewrite($hook, $type, $content) {
 
 	$regexp = mentions_get_regex();
-	$text =  preg_replace_callback($regexp, 'mentions_preg_callback', $text);
-
-	return $text;
+	$content =  preg_replace_callback($regexp, 'mentions_preg_callback', $content);
+	return $content;
 }
 
 /**
@@ -79,38 +75,48 @@ function mentions_rewrite($hook, $type, $content) {
  * @return string
  */
 function mentions_preg_callback($matches) {
-	$user = get_user_by_username($matches[1]);
-	$period = '';
-	$icon = '';
+	
+	$source = $matches[0];
+	$preceding_char = $matches[1];
+	$username = $matches[3];
 
+	if (empty($username)) {
+		return $source;
+	}
+	
+	$user = get_user_by_username($username);
+	
 	// Catch the trailing period when used as punctuation and not a username.
-	if (!$user && substr($matches[1], -1) == '.') {
-		$user = get_user_by_username(rtrim($matches[1], '.'));
+	$period = '';
+	if (!$user && substr($username, -1) == '.') {
+		$user = get_user_by_username(rtrim($username, '.'));
 		$period = '.';
 	}
 
-	if ($user) {
-		if (elgg_get_plugin_setting('fancy_links', 'mentions')) {
-			$icon = elgg_view('output/img', array(
-				'src' => $user->getIconURL('topbar'),
-				'class' => 'pas mentions-user-icon'
-			));
-			$replace = elgg_view('output/url', array(
-				'href' => $user->getURL(),
-				'text' => $icon . $user->name,
-				'class' => 'mentions-user-link'
-			));
-		} else {
-			$replace = elgg_view('output/url', array(
-				'href' => $user->getURL(),
-				'text' => $user->name,
-			));
-		}
-
-		return $replace .= $period;
-	} else {
-		return $matches[0];
+	if (!$user) {
+		return $source;
 	}
+
+	$icon = '';
+
+	if (elgg_get_plugin_setting('fancy_links', 'mentions')) {
+		$icon = elgg_view('output/img', array(
+			'src' => $user->getIconURL('topbar'),
+			'class' => 'pas mentions-user-icon'
+		));
+		$replacement = elgg_view('output/url', array(
+			'href' => $user->getURL(),
+			'text' => $icon . $user->name,
+			'class' => 'mentions-user-link'
+		));
+	} else {
+		$replacement = elgg_view('output/url', array(
+			'href' => $user->getURL(),
+			'text' => $user->name,
+		));
+	}
+
+	return $preceding_char . $replacement . $period;
 }
 
 /**
@@ -159,7 +165,10 @@ function mentions_notification_handler($event, $event_type, $object) {
 		// it's ok in this case if 0 matches == FALSE
 		if (preg_match_all(mentions_get_regex(), $content, $matches)) {
 			// match against the 2nd index since the first is everything
-			foreach ($matches[1] as $username) {
+			foreach ($matches[3] as $username) {
+				if (empty($username)) {
+					continue;
+				}
 				$usernames[] = $username;
 			}
 		}
