@@ -69,11 +69,18 @@ function mentions_get_regex() {
  */
 function mentions_get_views() {
 	// allow plugins to add additional views to be processed for usernames
-	$views = array('output/longtext');
+	$views = [
+		'output/longtext',
+		'object/elements/summary/content',
+		'object/elements/full/body',
+
+	];
 	$views = elgg_trigger_plugin_hook('get_views', 'mentions', null, $views);
 	foreach ($views as $view) {
 		elgg_register_plugin_hook_handler('view', $view, 'mentions_rewrite');
 	}
+
+	elgg_register_plugin_hook_handler('view_vars', 'river/elements/body', 'mentions_rewrite_river_message');
 }
 
 /**
@@ -89,6 +96,28 @@ function mentions_rewrite($hook, $type, $content) {
 	$regexp = mentions_get_regex();
 	$content = preg_replace_callback($regexp, 'mentions_preg_callback', $content);
 	return $content;
+}
+
+/**
+ * Rewrite mentions in river message
+ * 
+ * @param string $hook      "view_vars"
+ * @param string $type      "river/elements/body"
+ * @param array  $view_vars View vars
+ * @param array  $params    Hook params
+ * @return array
+ */
+function mentions_rewrite_river_message($hook, $type, $view_vars, $params) {
+
+	$message = elgg_extract('message', $view_vars);
+	if (!$message) {
+		return;
+	}
+
+	$regexp = mentions_get_regex();
+	$view_vars['message'] = preg_replace_callback($regexp, 'mentions_preg_callback', $message);
+
+	return $view_vars;
 }
 
 /**
