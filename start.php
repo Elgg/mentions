@@ -1,8 +1,8 @@
 <?php
+
 /**
  * Provides links and notifications for using @username mentions
  */
-
 elgg_register_event_handler('init', 'system', 'mentions_init');
 
 /**
@@ -26,7 +26,6 @@ function mentions_init() {
 
 	// @todo This will result in multiple notifications for an edited entity so we don't do this
 	//register_elgg_event_handler('update', 'all', 'mentions_notification_handler');
-
 	// add option to the personal notifications form
 	elgg_extend_view('notifications/subscriptions/personal', 'mentions/notification_settings');
 	elgg_register_plugin_hook_handler('action', 'notificationsettings/save', 'mentions_save_settings');
@@ -64,7 +63,7 @@ function mentions_get_views() {
 function mentions_rewrite($hook, $type, $content) {
 
 	$regexp = mentions_get_regex();
-	$content =  preg_replace_callback($regexp, 'mentions_preg_callback', $content);
+	$content = preg_replace_callback($regexp, 'mentions_preg_callback', $content);
 	return $content;
 }
 
@@ -75,17 +74,18 @@ function mentions_rewrite($hook, $type, $content) {
  * @return string
  */
 function mentions_preg_callback($matches) {
-	
+
 	$source = $matches[0];
 	$preceding_char = $matches[1];
+	$mention = $matches[2];
 	$username = $matches[3];
 
 	if (empty($username)) {
 		return $source;
 	}
-	
+
 	$user = get_user_by_username($username);
-	
+
 	// Catch the trailing period when used as punctuation and not a username.
 	$period = '';
 	if (!$user && substr($username, -1) == '.') {
@@ -97,24 +97,25 @@ function mentions_preg_callback($matches) {
 		return $source;
 	}
 
-	$icon = '';
+	if (elgg_get_plugin_setting('named_links', 'mentions', true)) {
+		$label = $user->getDisplayName();
+	} else {
+		$label = $mention;
+	}
 
+	$icon = '';
 	if (elgg_get_plugin_setting('fancy_links', 'mentions')) {
 		$icon = elgg_view('output/img', array(
 			'src' => $user->getIconURL('topbar'),
 			'class' => 'pas mentions-user-icon'
 		));
-		$replacement = elgg_view('output/url', array(
-			'href' => $user->getURL(),
-			'text' => $icon . $user->name,
-			'class' => 'mentions-user-link'
-		));
-	} else {
-		$replacement = elgg_view('output/url', array(
-			'href' => $user->getURL(),
-			'text' => $user->name,
-		));
 	}
+
+	$replacement = elgg_view('output/url', array(
+		'href' => $user->getURL(),
+		'text' => $icon . $label,
+		'class' => 'mentions-user-link',
+	));
 
 	return $preceding_char . $replacement . $period;
 }
@@ -193,7 +194,7 @@ function mentions_notification_handler($event, $event_type, $object) {
 		}
 
 		$notified_guids[] = $user->guid;
-		
+
 		// if they haven't set the notification status default to sending.
 		// Private settings are stored as strings so we check against "0"
 		$notification_setting = elgg_get_plugin_user_setting('notify', $user->guid, 'mentions');

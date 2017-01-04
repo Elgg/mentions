@@ -2,25 +2,32 @@
 /**
  * Plugin settings for mentions
  */
-
-$label = elgg_echo('mentions:fancy_links') . ' ';
-
-$options = array(
-	'name' => 'params[fancy_links]',
-	'value' => 1
-);
-
-if (elgg_get_plugin_setting('fancy_links', 'mentions')) {
-	$options['checked'] = 'checked';
-}
-
-$input = elgg_view('input/checkbox', $options);
-
+$entity = elgg_extract('entity', $vars);
 ?>
 
-<label>
-	<?php
-		echo $input;
-		echo $label;
-	?>
-</label>
+
+<div>
+	<label>
+		<?php
+		echo elgg_view('input/checkbox', array(
+			'name' => 'params[named_links]',
+			'value' => 1,
+			'checked' => (bool) $entity->named_links,
+		));
+		echo elgg_echo('mentions:named_links');
+		?>
+	</label>
+</div>
+
+<div>
+	<label>
+		<?php
+		echo elgg_view('input/checkbox', array(
+			'name' => 'params[fancy_links]',
+			'value' => 1,
+			'checked' => (bool) $entity->fancy_links,
+		));
+		echo elgg_echo('mentions:fancy_links');
+		?>
+	</label>
+</div>
