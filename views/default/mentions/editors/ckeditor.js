@@ -6,7 +6,8 @@ define(function (require) {
 	var elgg = require('elgg');
 	elgg.register_hook_handler('prepare', 'ckeditor', function (hook, type, params, CKEDITOR) {
 		var mentions = require('mentions/autocomplete');
-
+		require('mentions/editors/plaintext');
+		
 		CKEDITOR.on('instanceCreated', function (e) {
 			e.editor.on('contentDom', function (ev) {
 				var editable = ev.editor.editable();
