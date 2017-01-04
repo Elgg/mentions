@@ -10,7 +10,7 @@ elgg_register_event_handler('init', 'system', 'mentions_init');
  * @return void
  */
 function mentions_init() {
-	elgg_extend_view('css/elgg', 'css/mentions');
+	elgg_extend_view('elgg.css', 'mentions/mentions.css');
 
 	elgg_register_simplecache_view('js/mentions/editor');
 	elgg_require_js('mentions/editor');

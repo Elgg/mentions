@@ -1,9 +1,3 @@
-<?php
-/*
- * Mentions CSS for the fancy links
- */
-?>
-
 .mentions-user-icon {
 	display: inline;
 	padding: 0;
@@ -16,21 +10,22 @@
 }
 
 .mentions-user-link {
-	display: inline;
-	padding: 5px;
+	display: inline-block;
+	padding: 3px 6px;
 	border: 1px solid #eee;
-	border-radius: 8px;
-	-moz-border-radius: 8px;
-	-webkit-border-radius: 8px;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
 }
 
 .mentions-user-link:hover {
-	color: white;
-	background-color: #25AAE1;
+	background-color: #f4f4f4;
 }
 
 #mentions-popup {
 	padding: 0;
+	max-height: 400px;
+	overflow-y: auto;
 }
 
 #mentions-popup .elgg-autocomplete-item {
@@ -38,5 +33,9 @@
 }
 
 #mentions-popup .mentions-autocomplete > li:hover {
-	background-color: #DCDCDC;
+	background-color: #f4f4f4;
+}
+
+#mentions-popup .elgg-ajax-loader {
+    margin: 10px auto;
 }
