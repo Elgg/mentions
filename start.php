@@ -1,11 +1,14 @@
 <?php
 /**
  * Provides links and notifications for using @username mentions
- *
  */
 
 elgg_register_event_handler('init', 'system', 'mentions_init');
 
+/**
+ * Initialize
+ * @return void
+ */
 function mentions_init() {
 	elgg_extend_view('css/elgg', 'css/mentions');
 
@@ -29,6 +32,10 @@ function mentions_init() {
 	elgg_register_plugin_hook_handler('action', 'notificationsettings/save', 'mentions_save_settings');
 }
 
+/**
+ * Returns regex pattern for matching a @mention
+ * @return string
+ */
 function mentions_get_regex() {
 	// @todo this won't work for usernames that must be html encoded.
 	// get all chars with unicode 'letter' or 'mark' properties or a number _ or .,
@@ -36,6 +43,10 @@ function mentions_get_regex() {
 	return '/[\b]?@([\p{L}\p{M}_\.0-9]+)[\b]?/iu';
 }
 
+/**
+ * Registers hooks to replace @mentions with anchor tags in view output
+ * @return void
+ */
 function mentions_get_views() {
 	// allow plugins to add additional views to be processed for usernames
 	$views = array('output/longtext');
@@ -48,24 +59,24 @@ function mentions_get_views() {
 /**
  * Rewrites a view for @username mentions.
  *
- * @param string $hook    The name of the hook
- * @param string $type    The type of the hook
- * @param string $content The content of the page
+ * @param string $hook    "view"
+ * @param string $type    View name
+ * @param string $content View output
  * @return string
  */
-function mentions_rewrite($hook, $entity_type, $returnvalue, $params) {
+function mentions_rewrite($hook, $type, $content) {
 
 	$regexp = mentions_get_regex();
-	$returnvalue =  preg_replace_callback($regexp, 'mentions_preg_callback', $returnvalue);
+	$text =  preg_replace_callback($regexp, 'mentions_preg_callback', $text);
 
-	return $returnvalue;
+	return $text;
 }
 
 /**
- * Used as a callback fro the preg_replace in mentions_rewrite()
+ * Used as a callback for the preg_replace in mentions_rewrite()
  *
- * @param type $matches
- * @return type str
+ * @param array $matches Regex matches
+ * @return string
  */
 function mentions_preg_callback($matches) {
 	$user = get_user_by_username($matches[1]);
@@ -213,12 +224,13 @@ function mentions_notification_handler($event, $event_type, $object) {
 }
 
 /**
- * Save mentions-specific info from the notification form
+ * Saves notifications preferences for mentions from the settings form
  *
- * @param type $hook
- * @param type $type
- * @param type $value
- * @param type $params
+ * @param string $hook   "action"
+ * @param string $type   "notificationsettings/save"
+ * @param bool   $value  Proceed with action?
+ * @param array  $params Hook params
+ * @return void
  */
 function mentions_save_settings($hook, $type, $value, $params) {
 	$notify = (bool) get_input('mentions_notify');
@@ -227,6 +239,4 @@ function mentions_save_settings($hook, $type, $value, $params) {
 	if (!elgg_set_plugin_user_setting('notify', $notify, $user->getGUID(), 'mentions')) {
 		register_error(elgg_echo('mentions:settings:failed'));
 	}
-
-	return;
 }
