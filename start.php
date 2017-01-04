@@ -105,9 +105,9 @@ function mentions_preg_callback($matches) {
 /**
  * Catch all create events and scan for @username tags to notify user.
  *
- * @param string   $event      The event name
- * @param string   $event_type The event type
- * @param ElggData $object     The object that was created
+ * @param string                    $event      "create"
+ * @param string                    $event_type "object"|"annotation"
+ * @param ElggObject|ElggAnnotation $object     Created object or annotation
  * @return void
  */
 function mentions_notification_handler($event, $event_type, $object) {
@@ -126,90 +126,89 @@ function mentions_notification_handler($event, $event_type, $object) {
 
 	if ($object instanceof ElggAnnotation) {
 		$fields = ['value'];
+		$entity = $object->getEntity();
 	} else {
 		$fields = ['title', 'description'];
 		$fields = elgg_trigger_plugin_hook('get_fields', 'mentions', ['entity' => $object], $fields);
+		$entity = $object;
 	}
 
 	if (empty($fields)) {
 		return;
 	}
 
-	// store the guids of notified users so they only get one notification per creation event
-	$notified_guids = array();
+	$usernames = [];
 
 	foreach ($fields as $field) {
 		$content = $object->$field;
 		if (is_array($content)) {
 			$content = implode(' ', $content);
 		}
-		
+
 		// it's ok in this case if 0 matches == FALSE
 		if (preg_match_all(mentions_get_regex(), $content, $matches)) {
 			// match against the 2nd index since the first is everything
 			foreach ($matches[1] as $username) {
-
-				$user = get_user_by_username($username);
-
-				// check for trailing punctuation caught by the regex
-				if (!$user && substr($username, -1) == '.') {
-					$user = get_user_by_username(rtrim($username, '.'));
-				}
-
-				if (!$user) {
-					continue;
-				}
-
-				// user must have access to view object/annotation
-				if ($type == 'annotation') {
-					$annotated_entity = $object->getEntity();
-					if (!$annotated_entity || !has_access_to_entity($annotated_entity, $user)) {
-						continue;
-					}
-				} else {
-					if (!has_access_to_entity($object, $user)) {
-						continue;
-					}
-				}
-
-				if (in_array($user->guid, $notified_guids)) {
-					continue;
-				}
-
-				$notified_guids[] = $user->guid;
-
-				// if they haven't set the notification status default to sending.
-				// Private settings are stored as strings so we check against "0"
-				$notification_setting = elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions');
-				if ($notification_setting === "0") {
-					continue;
-				}
-
-				if ($user->language) {
-					$language = $user->language;
-				} else {
-					$language = elgg_get_config('language');
-				}
-
-				$link = $object->getURL();
-
-				$localized_type_str = elgg_echo($type_key, [], $language);
-				$subject = elgg_echo('mentions:notification:subject', array($owner->name, $localized_type_str), $language);
-
-				$body = elgg_echo('mentions:notification:body', array(
-					$owner->name,
-					$localized_type_str,
-					$link,
-				), $language);
-
-				$params = array(
-					'object' => $object,
-					'action' => 'mention',
-				);
-
-				notify_user($user->getGUID(), $owner->getGUID(), $subject, $body, $params);
+				$usernames[] = $username;
 			}
 		}
+	}
+
+	$notified_guids = [];
+
+	foreach ($usernames as $username) {
+		$user = get_user_by_username($username);
+
+		// check for trailing punctuation caught by the regex
+		if (!$user && substr($username, -1) == '.') {
+			$user = get_user_by_username(rtrim($username, '.'));
+		}
+
+		if (!$user) {
+			continue;
+		}
+
+		if (in_array($user->guid, $notified_guids)) {
+			continue;
+		}
+
+		$notified_guids[] = $user->guid;
+		
+		// if they haven't set the notification status default to sending.
+		// Private settings are stored as strings so we check against "0"
+		$notification_setting = elgg_get_plugin_user_setting('notify', $user->guid, 'mentions');
+		if ($notification_setting === "0") {
+			continue;
+		}
+
+		// user must have access to view object/annotation
+		if (!has_access_to_entity($entity, $user)) {
+			continue;
+		}
+
+		if ($user->language) {
+			$language = $user->language;
+		} else {
+			$language = elgg_get_config('language');
+		}
+
+		$link = $object->getURL();
+
+		$localized_type_str = elgg_echo($type_key, [], $language);
+		$subject = elgg_echo('mentions:notification:subject', array($owner->name, $localized_type_str), $language);
+
+		$body = elgg_echo('mentions:notification:body', array(
+			$owner->name,
+			$localized_type_str,
+			$link,
+				), $language);
+
+		$params = array(
+			'object' => $object,
+			'action' => 'mention',
+		);
+
+		notify_user($user->guid, $owner->guid, $subject, $body, $params);
 	}
 }
 
