@@ -14,7 +14,7 @@ Para ver la publicación completa, haz clic en el enlace siguiente:
 	'mentions:notification_types:object:bookmarks' => 'un marcador',
 	'mentions:notification_types:object:groupforumtopic' => 'un mensaje de debate en un grupo',
 	'mentions:notification_types:object:discussion_reply' => 'una respuesta de debate en un grupo',
-	'mentions:notification_types:object:thewire' => 'a wire post',
+	'mentions:notification_types:object:thewire' => 'un mensaje en The Wire',
 	'mentions:notification_types:object:comment' => 'un comentario',
 	'mentions:settings:send_notification' => '¿Recibir notificaciones cuando alguien te @nombre?',
 
