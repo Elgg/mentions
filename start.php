@@ -296,7 +296,7 @@ function mentions_notification_handler($event, $event_type, $object) {
  * @return void
  */
 function mentions_save_settings($hook, $type, $value, $params) {
-	$notify = (bool) get_input('mentions_notify');
+	$notify = (string) get_input('mentions_notify');
 	$user = get_entity(get_input('guid'));
 
 	if (!elgg_set_plugin_user_setting('notify', $notify, $user->getGUID(), 'mentions')) {
