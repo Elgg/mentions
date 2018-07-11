@@ -183,6 +183,10 @@ function mentions_preg_callback($matches) {
  */
 function mentions_notification_handler($event, $event_type, $object) {
 
+        if ($object === false) {
+                return;
+        }
+        
 	$type = $object->getType();
 	$subtype = $object->getSubtype();
 	$owner = $object->getOwnerEntity();
