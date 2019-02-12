@@ -9,6 +9,8 @@
 define(function(require) {
 	var $ = require('jquery');
 	var elgg = require('elgg');
+	var Ajax = require('elgg/Ajax');
+	var ajax = new Ajax(false);
 	var callback;
 
 	/**
@@ -17,7 +19,7 @@ define(function(require) {
 	var handleResponse = function (json) {
 		var userOptions = '';
 		$(json).each(function(key, user) {
-			userOptions += '<li data-username="' + user.desc + '">' + user.label + "</li>";
+			userOptions += '<li data-username="' + user.value + '">' + user.label + "</li>";
 		});
 
 		if (!userOptions) {
@@ -70,9 +72,13 @@ define(function(require) {
 			current = current.replace('@', '');
 			$('#mentions-popup').removeClass('hidden');
 
-			var options = {success: handleResponse};
-
-			elgg.get('livesearch?q=' + current + '&match_on=users', options);
+			var target_guid = elgg.get_page_owner_guid();
+			ajax.path('mentions/search/' + target_guid, {
+				data: {
+					q: current,
+					view: 'json'
+				},
+			}).done(handleResponse);
 		}
 	};
 

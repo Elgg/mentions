@@ -6,7 +6,7 @@
 $user = elgg_get_page_owner_entity();
 
 // if user has never set this, default it to on
-if (false === elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions')) {
+if (null === elgg_get_plugin_user_setting('notify', $user->getGUID(), 'mentions')) {
 	elgg_set_plugin_user_setting('notify', 1, $user->getGUID(), 'mentions');
 }
 
