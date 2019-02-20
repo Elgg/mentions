@@ -1,6 +1,13 @@
 {
 	"name": "elgg/mentions",
+	"description": "Rewrite all @username mentions to link to profile and optionally notify user",
 	"type": "elgg-plugin",
+	"keywords": ["elgg", "plugin", "mention"],
+	"license": "GPL-2.0-only",
+	"support": {
+		"source": "https://github.com/Elgg/mentions",
+		"issues": "https://github.com/Elgg/mentions/issues"
+	},
 	"require": {
 		"composer/installers": ">=1.0.8"
 	},
@@ -19,6 +26,5 @@
 	},
 	 "scripts": {
         "test": "phpunit"
-    },
-	"license": "GPL-2.0"
+    }
 }
